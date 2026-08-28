@@ -1,0 +1,24 @@
+{
+  "name": "schoonmelder-app",
+  "version": "1.0.0",
+  "description": "Полноценное веб-приложение для отчётов о мусоре и выполнения заданий",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "start": "node backend/dist/index.js",
+    "start:prod": "cd frontend && npm run build && cd ../backend && npm run build && node dist/index.js"
+  },
+  "keywords": [
+    "cleanup",
+    "reporting",
+    "rewards",
+    "geotagging"
+  ],
+  "author": "",
+  "license": "MIT"
+}

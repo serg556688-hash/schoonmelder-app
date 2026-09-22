@@ -1,0 +1,1781 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#FF6A1A" />
+<title>Schoonmelder</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23FF6A1A'/%3E%3Cstop offset='100%25' stop-color='%23E85A0C'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='40' height='40' rx='9' fill='url(%23g)'/%3E%3Crect x='16' y='10.5' width='8' height='3' rx='1.4' fill='%23fff'/%3E%3Crect x='11.5' y='13.5' width='17' height='3.2' rx='1.5' fill='%23fff'/%3E%3Cpath d='M13.2 18 L14.6 30.5 C14.7 31.4 15.5 32 16.4 32 L23.6 32 C24.5 32 25.3 31.4 25.4 30.5 L26.8 18 Z' fill='%23fff'/%3E%3Cpath d='M30 7.5 L30.9 9.9 L33.3 10.8 L30.9 11.7 L30 14.1 L29.1 11.7 L26.7 10.8 L29.1 9.9 Z' fill='%23fff'/%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g2' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23FF6A1A'/%3E%3Cstop offset='100%25' stop-color='%23E85A0C'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='40' height='40' fill='url(%23g2)'/%3E%3Crect x='16' y='10.5' width='8' height='3' rx='1.4' fill='%23fff'/%3E%3Crect x='11.5' y='13.5' width='17' height='3.2' rx='1.5' fill='%23fff'/%3E%3Cpath d='M13.2 18 L14.6 30.5 C14.7 31.4 15.5 32 16.4 32 L23.6 32 C24.5 32 25.3 31.4 25.4 30.5 L26.8 18 Z' fill='%23fff'/%3E%3Cpath d='M30 7.5 L30.9 9.9 L33.3 10.8 L30.9 11.7 L30 14.1 L29.1 11.7 L26.7 10.8 L29.1 9.9 Z' fill='%23fff'/%3E%3C/svg%3E" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #F3ECE3; font-family: 'IBM Plex Sans', sans-serif; }
+  #root { min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#8A8074;font-size:14px;text-align:center;padding:24px;">
+    Загрузка Schoonmelder…<br/>Нужен интернет для первого запуска.
+  </div>
+</div>
+
+<script>
+  window.addEventListener('error', function (e) {
+    var root = document.getElementById('root');
+    if (root && !root.dataset.appLoaded) {
+      root.innerHTML =
+        '<div style="padding:24px;font-family:sans-serif;color:#D9432B;font-size:13px;line-height:1.5;">' +
+        '<b>Не удалось загрузить приложение.</b><br/>Проверь подключение к интернету и открой файл ещё раз.<br/><br/>' +
+        'Техническая причина: ' + (e.message || 'неизвестная ошибка') +
+        '</div>';
+    }
+  });
+</script>
+
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.28.4/babel.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const ICON_GLYPHS = {
+  Camera: '📷', MapPin: '📍', Navigation: '🧭', Check: '✔', Clock: '🕒',
+  MessageSquare: '💬', Loader2: '⏳', Wrench: '🔧', ImagePlus: '🖼',
+  Home: '🏠', MessageCircle: '💬', HelpCircle: '❓', User: '👤', Send: '➤',
+  ChevronDown: '▾', ClipboardList: '📋', Wallet: '👛', Footprints: '🚶',
+  Bike: '🚲', Zap: '⚡', Car: '🚗', CreditCard: '💳', Gift: '🎁', Bell: '🔔',
+  ArrowDownToLine: '⬇', Plus: '＋', X: '✕', ShieldCheck: '🛡', ShieldAlert: '⚠', Globe: '🌐', Menu: '☰',
+};
+
+function Icon({ name, size = 16, color, style, className }) {
+  return (
+    <span
+      className={className}
+      style={{ fontSize: size, lineHeight: 1, display: 'inline-block', color, filter: color ? 'none' : undefined, ...style }}
+    >
+      {ICON_GLYPHS[name] || '•'}
+    </span>
+  );
+}
+
+function LogoMark({ size = 40 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" style={{ flexShrink: 0, display: 'block' }}>
+      <defs>
+        <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor={COLORS.accent} />
+          <stop offset="100%" stopColor={COLORS.accentDark} />
+        </linearGradient>
+      </defs>
+      <rect width="40" height="40" rx="12" fill="url(#logoGrad)" />
+      <rect x="16" y="10.5" width="8" height="3" rx="1.4" fill="#ffffff" />
+      <rect x="11.5" y="13.5" width="17" height="3.2" rx="1.5" fill="#ffffff" />
+      <path d="M13.2 18 L14.6 30.5 C14.7 31.4 15.5 32 16.4 32 L23.6 32 C24.5 32 25.3 31.4 25.4 30.5 L26.8 18 Z" fill="#ffffff" />
+      <line x1="17.1" y1="21" x2="17.5" y2="28.5" stroke={COLORS.accentDark} strokeWidth="1.3" strokeLinecap="round" />
+      <line x1="20" y1="21" x2="20" y2="28.5" stroke={COLORS.accentDark} strokeWidth="1.3" strokeLinecap="round" />
+      <line x1="22.9" y1="21" x2="22.5" y2="28.5" stroke={COLORS.accentDark} strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M30 7.5 L30.9 9.9 L33.3 10.8 L30.9 11.7 L30 14.1 L29.1 11.7 L26.7 10.8 L29.1 9.9 Z" fill="#ffffff" />
+      <circle cx="9.5" cy="9.5" r="1.4" fill="#ffffff" opacity="0.9" />
+    </svg>
+  );
+}
+
+
+const LANG = {
+  ru: {
+    subReporter: 'Сообщайте о мусоре — получайте бонусы',
+    subExecutor: 'Убирайте мусор — получайте вознаграждение',
+    roleReporter: 'Заказчик', roleExecutor: 'Исполнитель',
+    navMessages: 'Сообщения', navJobs: 'Задания', navHistory: 'История',
+    navBonus: 'Бонусы', navEarnings: 'Доходы', navChat: 'Чат', navProfile: 'Профиль',
+    balanceBonusLabel: 'Ваш баланс бонусов', balanceIncomeLabel: 'Доступно к выводу',
+    balanceBonusLabel2: 'Баланс бонусов', balanceIncomeLabel2: 'Баланс дохода',
+    sentBanner: 'Сигнал отправлен исполнителю!',
+    reportFormTitle: 'Сообщить о мусоре',
+    photoErrorText: 'Не удалось обработать фото — попробуй выбрать другое.',
+    locating: 'определяем место…', locationPending: 'место появится после фото',
+    commentLabel: 'Комментарий', commentPlaceholder: 'Например, «мусор у входа» (необязательно)',
+    submitBtn: 'Отправить сообщение', submitBtnBusy: 'Отправка…',
+    needPhotoHint: 'Добавь хотя бы одно фото — тогда можно отправить.',
+    activeTitle: 'Активные сообщения', noActive: 'Активных сообщений нет.',
+    confirmDoneBtn: 'Подтвердить и получить бонус',
+    vehicleTitle: 'Выбранный транспорт',
+    vehicleFoot: 'Пешком', vehicleBike: 'Велосипед', vehicleEbike: 'Электровелик',
+    vehicleScooter: 'Скутер', vehicleCar: 'Автомобиль',
+    newJobsTitle: 'Новые задания', noNewJobs: 'Новых заданий пока нет.',
+    acceptJobBtn: 'Принять задание',
+    distanceLabel: 'расстояние', etaLabel: 'в пути',
+    openNavBtn: 'Открыть навигацию', imHereBtn: 'Я на месте',
+    imDoneBtn: 'Я убрал — сфотографировать',
+    historyTitle: 'История', noHistory: 'Здесь появятся завершённые сообщения.',
+    totalEarnedLabel: 'Всего заработано', sentPhotosLabel: 'Отправлено фото',
+    doneJobsLabel: 'Выполнено заданий',
+    explainReporter: 'Начисляется {n}¢ за каждое фото, отправленное исполнителю.',
+    explainExecutor: 'Начисляется {n} за каждое выполненное задание.',
+    withdrawBtn: 'Вывести средства', withdrawAvailable: 'Доступно для вывода',
+    withdrawMethodTitle: 'Способ вывода',
+    methodCard: 'Банковская карта', methodCardSub: 'Visa, Mastercard',
+    methodPaypal: 'PayPal', methodPaypalSub: 'Электронный кошелёк',
+    methodGift: 'Подарочная карта', methodGiftSub: 'Bol.com, Albert Heijn',
+    withdrawConfirm: 'Подтвердить вывод', withdrawCancel: 'Отмена',
+    withdrawDoneTitle: 'Заявка на вывод отправлена',
+    withdrawDoneSub: 'Средства поступят в течение 1–3 дней.',
+    chatPlaceholder: 'Написать сообщение…',
+    chatHelloReporter: 'Здравствуйте! Приняли ваше сообщение в работу.',
+    chatHelloExecutor: 'Спасибо, что сообщили — уже выезжаю.',
+    chatAutoReply: 'Принято, спасибо!',
+    namePh: 'Имя', phonePh: 'Телефон', profileSave: 'Сохранить',
+    noPhone: 'Телефон не указан', profileEdit: 'Редактировать профиль',
+    statSentMessages: 'Отправлено сообщений', statDoneJobs: 'Завершено заданий',
+    myVehicleLabel: 'Мой транспорт', myBonusesLabel: 'Мои бонусы',
+    myIncomeLabel: 'Мои доходы', supportLabel: 'Написать в поддержку',
+    statusNew: 'Новое задание', statusInProgress: 'Исполнитель в пути', statusAwaiting: 'Проверка', statusConfirmed: 'Выполнено',
+    executorEnRoute: 'Исполнитель едет к месту', updatedAgoLabel: 'обновлено назад',
+    geoVerified: 'Место подтверждено (±{n} м)',
+    geoMismatch: 'Место не совпадает ({n} км) — проверьте вручную',
+    geoUnavailable: 'Геометка недоступна — сверить место не удалось',
+    beforeLabel: 'до', afterLabel: 'после',
+    demoNote: 'Переключайся между «Заказчик» и «Исполнитель» вверху экрана — это одно и то же приложение, обе роли видят одни и те же сигналы сразу.',
+    signInTab: 'Войти', signUpTab: 'Регистрация',
+    emailPh: 'Email', passwordPh: 'Пароль',
+    chooseRoleLabel: 'Регистрируюсь как',
+    signUpBtn: 'Зарегистрироваться', signInBtn: 'Войти', pleaseWaitBtn: 'Подождите…',
+    orDividerText: 'или',
+    continueGoogle: 'Продолжить с Google', continueApple: 'Продолжить с Apple',
+    checkEmailTitle: 'Проверь почту',
+    checkEmailNote: 'Мы отправили письмо для подтверждения на {email}. Перейди по ссылке в письме, и вернись сюда, чтобы войти.',
+    alreadyConfirmedBtn: 'Уже подтвердил — войти',
+    fillFieldsError: 'Заполни email и пароль',
+    authDemoNote: 'Роль (Заказчик / Исполнитель) выбирается при регистрации и закрепляется за аккаунтом навсегда.',
+    roleSetupTitle: 'Кто вы?',
+    roleSetupNote: 'Эту роль нельзя будет сменить позже — для другой роли понадобится отдельный аккаунт.',
+    roleReporterCta: 'Заказчик — сообщаю о мусоре', roleExecutorCta: 'Исполнитель — убираю мусор',
+    confirmBtn: 'Подтвердить', savingBtn: 'Сохраняем…', signOutBtn: 'Выйти', signOutAccountBtn: 'Выйти из аккаунта',
+  },
+  en: {
+    subReporter: 'Report litter — earn bonuses',
+    subExecutor: 'Clean up litter — get paid',
+    roleReporter: 'Client', roleExecutor: 'Cleaner',
+    navMessages: 'Reports', navJobs: 'Jobs', navHistory: 'History',
+    navBonus: 'Bonuses', navEarnings: 'Earnings', navChat: 'Chat', navProfile: 'Profile',
+    balanceBonusLabel: 'Your bonus balance', balanceIncomeLabel: 'Available to withdraw',
+    balanceBonusLabel2: 'Bonus balance', balanceIncomeLabel2: 'Income balance',
+    sentBanner: 'Report sent to the cleaner!',
+    reportFormTitle: 'Report litter',
+    photoErrorText: 'Could not process the photo — try another one.',
+    locating: 'locating…', locationPending: 'location appears after a photo',
+    commentLabel: 'Comment', commentPlaceholder: 'E.g. "litter by the entrance" (optional)',
+    submitBtn: 'Send report', submitBtnBusy: 'Sending…',
+    needPhotoHint: 'Add at least one photo to send.',
+    activeTitle: 'Active reports', noActive: 'No active reports.',
+    confirmDoneBtn: 'Confirm and get bonus',
+    vehicleTitle: 'Selected vehicle',
+    vehicleFoot: 'On foot', vehicleBike: 'Bike', vehicleEbike: 'E-bike',
+    vehicleScooter: 'Scooter', vehicleCar: 'Car',
+    newJobsTitle: 'New jobs', noNewJobs: 'No new jobs yet.',
+    acceptJobBtn: 'Accept job',
+    distanceLabel: 'distance', etaLabel: 'ETA',
+    openNavBtn: 'Open navigation', imHereBtn: "I'm here",
+    imDoneBtn: 'Done — take a photo',
+    historyTitle: 'History', noHistory: 'Completed reports will appear here.',
+    totalEarnedLabel: 'Total earned', sentPhotosLabel: 'Photos sent',
+    doneJobsLabel: 'Jobs completed',
+    explainReporter: 'You earn {n}¢ for every photo sent to a cleaner.',
+    explainExecutor: 'You earn {n} for every completed job.',
+    withdrawBtn: 'Withdraw funds', withdrawAvailable: 'Available to withdraw',
+    withdrawMethodTitle: 'Withdrawal method',
+    methodCard: 'Bank card', methodCardSub: 'Visa, Mastercard',
+    methodPaypal: 'PayPal', methodPaypalSub: 'Digital wallet',
+    methodGift: 'Gift card', methodGiftSub: 'Bol.com, Albert Heijn',
+    withdrawConfirm: 'Confirm withdrawal', withdrawCancel: 'Cancel',
+    withdrawDoneTitle: 'Withdrawal requested',
+    withdrawDoneSub: 'Funds arrive within 1–3 days.',
+    chatPlaceholder: 'Type a message…',
+    chatHelloReporter: "Hi! We've picked up your report.",
+    chatHelloExecutor: 'Thanks for reporting — on my way.',
+    chatAutoReply: 'Got it, thanks!',
+    namePh: 'Name', phonePh: 'Phone', profileSave: 'Save',
+    noPhone: 'No phone provided', profileEdit: 'Edit profile',
+    statSentMessages: 'Reports sent', statDoneJobs: 'Jobs completed',
+    myVehicleLabel: 'My vehicle', myBonusesLabel: 'My bonuses',
+    myIncomeLabel: 'My earnings', supportLabel: 'Contact support',
+    statusNew: 'New job', statusInProgress: 'Cleaner en route', statusAwaiting: 'Under review', statusConfirmed: 'Completed',
+    executorEnRoute: 'Cleaner is heading to the spot', updatedAgoLabel: 'updated',
+    geoVerified: 'Location verified (±{n} m)',
+    geoMismatch: 'Location mismatch ({n} km) — check manually',
+    geoUnavailable: 'Location tag unavailable — could not verify',
+    beforeLabel: 'before', afterLabel: 'after',
+    demoNote: 'Switch between "Client" and "Cleaner" at the top — it\'s the same app, both roles see the same reports instantly.',
+    signInTab: 'Log in', signUpTab: 'Sign up',
+    emailPh: 'Email', passwordPh: 'Password',
+    chooseRoleLabel: 'Signing up as',
+    signUpBtn: 'Sign up', signInBtn: 'Log in', pleaseWaitBtn: 'Please wait…',
+    orDividerText: 'or',
+    continueGoogle: 'Continue with Google', continueApple: 'Continue with Apple',
+    checkEmailTitle: 'Check your email',
+    checkEmailNote: 'We sent a confirmation link to {email}. Follow it, then come back here to log in.',
+    alreadyConfirmedBtn: 'Already confirmed — log in',
+    fillFieldsError: 'Enter your email and password',
+    authDemoNote: 'Role (Client / Cleaner) is chosen at sign-up and locked to the account forever.',
+    roleSetupTitle: 'Who are you?',
+    roleSetupNote: 'This role can\'t be changed later — a different role needs a separate account.',
+    roleReporterCta: 'Client — I report litter', roleExecutorCta: 'Cleaner — I clean up litter',
+    confirmBtn: 'Confirm', savingBtn: 'Saving…', signOutBtn: 'Sign out', signOutAccountBtn: 'Sign out of account',
+  },
+  nl: {
+    subReporter: 'Meld zwerfvuil — verdien bonussen',
+    subExecutor: 'Ruim zwerfvuil op — word betaald',
+    roleReporter: 'Melder', roleExecutor: 'Opruimer',
+    navMessages: 'Meldingen', navJobs: 'Opdrachten', navHistory: 'Historie',
+    navBonus: 'Bonussen', navEarnings: 'Inkomsten', navChat: 'Chat', navProfile: 'Profiel',
+    balanceBonusLabel: 'Jouw bonussaldo', balanceIncomeLabel: 'Beschikbaar om op te nemen',
+    balanceBonusLabel2: 'Bonussaldo', balanceIncomeLabel2: 'Inkomstensaldo',
+    sentBanner: 'Melding verstuurd naar de opruimer!',
+    reportFormTitle: 'Meld zwerfvuil',
+    photoErrorText: 'Foto verwerken mislukt — probeer een andere.',
+    locating: 'locatie bepalen…', locationPending: 'locatie verschijnt na een foto',
+    commentLabel: 'Opmerking', commentPlaceholder: 'Bijv. "afval bij de ingang" (optioneel)',
+    submitBtn: 'Melding versturen', submitBtnBusy: 'Versturen…',
+    needPhotoHint: 'Voeg minstens één foto toe om te versturen.',
+    activeTitle: 'Actieve meldingen', noActive: 'Geen actieve meldingen.',
+    confirmDoneBtn: 'Bevestigen en bonus ontvangen',
+    vehicleTitle: 'Gekozen vervoer',
+    vehicleFoot: 'Te voet', vehicleBike: 'Fiets', vehicleEbike: 'E-bike',
+    vehicleScooter: 'Scooter', vehicleCar: 'Auto',
+    newJobsTitle: 'Nieuwe opdrachten', noNewJobs: 'Nog geen nieuwe opdrachten.',
+    acceptJobBtn: 'Opdracht aannemen',
+    distanceLabel: 'afstand', etaLabel: 'onderweg',
+    openNavBtn: 'Navigatie openen', imHereBtn: 'Ik ben er',
+    imDoneBtn: 'Klaar — foto maken',
+    historyTitle: 'Historie', noHistory: 'Afgeronde meldingen verschijnen hier.',
+    totalEarnedLabel: 'Totaal verdiend', sentPhotosLabel: "Foto's verstuurd",
+    doneJobsLabel: 'Opdrachten afgerond',
+    explainReporter: 'Je verdient {n}ct voor elke foto die naar een opruimer gaat.',
+    explainExecutor: 'Je verdient {n} voor elke afgeronde opdracht.',
+    withdrawBtn: 'Geld opnemen', withdrawAvailable: 'Beschikbaar om op te nemen',
+    withdrawMethodTitle: 'Opnamemethode',
+    methodCard: 'Bankpas', methodCardSub: 'Visa, Mastercard',
+    methodPaypal: 'PayPal', methodPaypalSub: 'Digitale portemonnee',
+    methodGift: 'Cadeaukaart', methodGiftSub: 'Bol.com, Albert Heijn',
+    withdrawConfirm: 'Opname bevestigen', withdrawCancel: 'Annuleren',
+    withdrawDoneTitle: 'Opname aangevraagd',
+    withdrawDoneSub: 'Het geld komt binnen 1–3 dagen aan.',
+    chatPlaceholder: 'Typ een bericht…',
+    chatHelloReporter: 'Hallo! We hebben je melding in behandeling genomen.',
+    chatHelloExecutor: 'Bedankt voor de melding — ik ben onderweg.',
+    chatAutoReply: 'Begrepen, bedankt!',
+    namePh: 'Naam', phonePh: 'Telefoon', profileSave: 'Opslaan',
+    noPhone: 'Geen telefoonnummer', profileEdit: 'Profiel bewerken',
+    statSentMessages: 'Meldingen verstuurd', statDoneJobs: 'Opdrachten afgerond',
+    myVehicleLabel: 'Mijn vervoer', myBonusesLabel: 'Mijn bonussen',
+    myIncomeLabel: 'Mijn inkomsten', supportLabel: 'Contact met support',
+    statusNew: 'Nieuwe opdracht', statusInProgress: 'Opruimer onderweg', statusAwaiting: 'In controle', statusConfirmed: 'Afgerond',
+    executorEnRoute: 'De opruimer is onderweg', updatedAgoLabel: 'bijgewerkt',
+    geoVerified: 'Locatie geverifieerd (±{n} m)',
+    geoMismatch: 'Locatie komt niet overeen ({n} km) — handmatig controleren',
+    geoUnavailable: 'Locatiegegevens niet beschikbaar',
+    beforeLabel: 'voor', afterLabel: 'na',
+    demoNote: 'Wissel bovenin tussen "Melder" en "Opruimer" — dit is dezelfde app, beide kanten zien meteen dezelfde meldingen.',
+    signInTab: 'Inloggen', signUpTab: 'Registreren',
+    emailPh: 'E-mail', passwordPh: 'Wachtwoord',
+    chooseRoleLabel: 'Ik registreer als',
+    signUpBtn: 'Registreren', signInBtn: 'Inloggen', pleaseWaitBtn: 'Even geduld…',
+    orDividerText: 'of',
+    continueGoogle: 'Doorgaan met Google', continueApple: 'Doorgaan met Apple',
+    checkEmailTitle: 'Controleer je e-mail',
+    checkEmailNote: 'We hebben een bevestigingslink gestuurd naar {email}. Volg de link en kom terug om in te loggen.',
+    alreadyConfirmedBtn: 'Al bevestigd — inloggen',
+    fillFieldsError: 'Vul e-mail en wachtwoord in',
+    authDemoNote: 'De rol (Melder / Opruimer) kies je bij registratie en staat daarna vast voor dit account.',
+    roleSetupTitle: 'Wie ben je?',
+    roleSetupNote: 'Deze rol kan later niet meer gewijzigd worden — voor de andere rol is een apart account nodig.',
+    roleReporterCta: 'Melder — ik meld zwerfvuil', roleExecutorCta: 'Opruimer — ik ruim zwerfvuil op',
+    confirmBtn: 'Bevestigen', savingBtn: 'Opslaan…', signOutBtn: 'Uitloggen', signOutAccountBtn: 'Uitloggen bij dit account',
+  },
+  ar: {
+    subReporter: 'أبلغ عن النفايات — احصل على مكافآت',
+    subExecutor: 'نظّف النفايات — احصل على أجر',
+    roleReporter: 'العميل', roleExecutor: 'العامل',
+    navMessages: 'البلاغات', navJobs: 'المهام', navHistory: 'السجل',
+    navBonus: 'المكافآت', navEarnings: 'الأرباح', navChat: 'الدردشة', navProfile: 'الملف الشخصي',
+    balanceBonusLabel: 'رصيد مكافآتك', balanceIncomeLabel: 'المتاح للسحب',
+    balanceBonusLabel2: 'رصيد المكافآت', balanceIncomeLabel2: 'رصيد الأرباح',
+    sentBanner: 'تم إرسال البلاغ إلى العامل!',
+    reportFormTitle: 'الإبلاغ عن نفايات',
+    photoErrorText: 'تعذّرت معالجة الصورة — جرّب صورة أخرى.',
+    locating: 'جارٍ تحديد الموقع…', locationPending: 'سيظهر الموقع بعد إضافة صورة',
+    commentLabel: 'ملاحظة', commentPlaceholder: 'مثال: «نفايات بجانب المدخل» (اختياري)',
+    submitBtn: 'إرسال البلاغ', submitBtnBusy: 'جارٍ الإرسال…',
+    needPhotoHint: 'أضف صورة واحدة على الأقل حتى يمكن الإرسال.',
+    activeTitle: 'البلاغات النشطة', noActive: 'لا توجد بلاغات نشطة.',
+    confirmDoneBtn: 'تأكيد واستلام المكافأة',
+    vehicleTitle: 'وسيلة التنقل المختارة',
+    vehicleFoot: 'سيرًا على الأقدام', vehicleBike: 'دراجة هوائية', vehicleEbike: 'دراجة كهربائية',
+    vehicleScooter: 'سكوتر', vehicleCar: 'سيارة',
+    newJobsTitle: 'مهام جديدة', noNewJobs: 'لا توجد مهام جديدة حاليًا.',
+    acceptJobBtn: 'قبول المهمة',
+    distanceLabel: 'المسافة', etaLabel: 'الوقت المتبقي',
+    openNavBtn: 'فتح خرائط جوجل', imHereBtn: 'وصلت',
+    imDoneBtn: 'انتهيت — التقط صورة',
+    historyTitle: 'السجل', noHistory: 'ستظهر هنا البلاغات المكتملة.',
+    totalEarnedLabel: 'إجمالي الأرباح', sentPhotosLabel: 'الصور المُرسلة',
+    doneJobsLabel: 'المهام المنجزة',
+    explainReporter: 'تحصل على {n} سنت عن كل صورة تُرسل إلى عامل.',
+    explainExecutor: 'تحصل على {n} عن كل مهمة تُنجزها.',
+    withdrawBtn: 'سحب الأموال', withdrawAvailable: 'المتاح للسحب',
+    withdrawMethodTitle: 'طريقة السحب',
+    methodCard: 'بطاقة مصرفية', methodCardSub: 'Visa, Mastercard',
+    methodPaypal: 'PayPal', methodPaypalSub: 'محفظة إلكترونية',
+    methodGift: 'بطاقة هدايا', methodGiftSub: 'Bol.com, Albert Heijn',
+    withdrawConfirm: 'تأكيد السحب', withdrawCancel: 'إلغاء',
+    withdrawDoneTitle: 'تم إرسال طلب السحب',
+    withdrawDoneSub: 'ستصل الأموال خلال ١–٣ أيام.',
+    chatPlaceholder: 'اكتب رسالة…',
+    chatHelloReporter: 'مرحبًا! تم استلام بلاغك وجارٍ العمل عليه.',
+    chatHelloExecutor: 'شكرًا على البلاغ — أنا في الطريق.',
+    chatAutoReply: 'تم الاستلام، شكرًا لك!',
+    namePh: 'الاسم', phonePh: 'رقم الهاتف', profileSave: 'حفظ',
+    noPhone: 'لم يُدرج رقم الهاتف', profileEdit: 'تعديل الملف الشخصي',
+    statSentMessages: 'البلاغات المُرسلة', statDoneJobs: 'المهام المكتملة',
+    myVehicleLabel: 'وسيلة تنقلي', myBonusesLabel: 'مكافآتي',
+    myIncomeLabel: 'أرباحي', supportLabel: 'التواصل مع الدعم',
+    statusNew: 'مهمة جديدة', statusInProgress: 'العامل في الطريق', statusAwaiting: 'قيد المراجعة', statusConfirmed: 'مكتملة',
+    executorEnRoute: 'العامل متوجه إلى المكان', updatedAgoLabel: 'قبل',
+    geoVerified: 'تم التحقق من الموقع (±{n} م)',
+    geoMismatch: 'الموقع غير مطابق ({n} كم) — يُرجى التحقق يدويًا',
+    geoUnavailable: 'بيانات الموقع غير متاحة — تعذّر التحقق',
+    beforeLabel: 'قبل', afterLabel: 'بعد',
+    demoNote: 'بدّل بين «العميل» و«العامل» في الأعلى — هذا نفس التطبيق، ويرى الطرفان نفس البلاغات فورًا.',
+    signInTab: 'تسجيل الدخول', signUpTab: 'إنشاء حساب',
+    emailPh: 'البريد الإلكتروني', passwordPh: 'كلمة المرور',
+    chooseRoleLabel: 'التسجيل كـ',
+    signUpBtn: 'إنشاء حساب', signInBtn: 'تسجيل الدخول', pleaseWaitBtn: 'يرجى الانتظار…',
+    orDividerText: 'أو',
+    continueGoogle: 'المتابعة عبر Google', continueApple: 'المتابعة عبر Apple',
+    checkEmailTitle: 'تحقق من بريدك الإلكتروني',
+    checkEmailNote: 'أرسلنا رابط تأكيد إلى {email}. اضغط عليه، ثم عد إلى هنا لتسجيل الدخول.',
+    alreadyConfirmedBtn: 'تم التأكيد بالفعل — تسجيل الدخول',
+    fillFieldsError: 'أدخل البريد الإلكتروني وكلمة المرور',
+    authDemoNote: 'يتم اختيار الدور (عميل / عامل) عند التسجيل ويظل ثابتًا للحساب دائمًا.',
+    roleSetupTitle: 'من أنت؟',
+    roleSetupNote: 'لا يمكن تغيير هذا الدور لاحقًا — يتطلب الدور الآخر حسابًا منفصلاً.',
+    roleReporterCta: 'عميل — أُبلغ عن النفايات', roleExecutorCta: 'عامل — أُنظّف النفايات',
+    confirmBtn: 'تأكيد', savingBtn: 'جارٍ الحفظ…', signOutBtn: 'تسجيل الخروج', signOutAccountBtn: 'تسجيل الخروج من الحساب',
+  },
+};
+
+function makeT(lang) {
+  return (key) => (LANG[lang] && LANG[lang][key]) || LANG.ru[key] || key;
+}
+
+const SUPABASE_URL = 'https://hkgcktbpovfkfopobmly.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable___JY0xqVNJPZw5ShW7hbIA_V-bd-0gR';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function rowToReport(row) {
+  return {
+    id: row.id,
+    photos: row.photos || [],
+    coords: (row.lat != null && row.lng != null) ? { lat: row.lat, lng: row.lng } : null,
+    comment: row.comment || '',
+    createdAt: Number(row.created_at),
+    status: row.status,
+    executorCoords: (row.executor_lat != null && row.executor_lng != null)
+      ? { lat: row.executor_lat, lng: row.executor_lng } : null,
+    executorUpdatedAt: row.executor_updated_at ? Number(row.executor_updated_at) : null,
+    completionPhoto: row.completion_photo || null,
+    completionCoords: (row.completion_lat != null && row.completion_lng != null)
+      ? { lat: row.completion_lat, lng: row.completion_lng } : null,
+    completedAt: row.completed_at ? Number(row.completed_at) : null,
+  };
+}
+
+function reportToInsertRow(r) {
+  return {
+    id: r.id,
+    photos: r.photos,
+    lat: r.coords ? r.coords.lat : null,
+    lng: r.coords ? r.coords.lng : null,
+    comment: r.comment,
+    created_at: r.createdAt,
+    status: r.status,
+  };
+}
+
+function rowToProfile(row) {
+  return {
+    role: row.role,
+    name: row.name || '',
+    phone: row.phone || '',
+    vehicle: row.vehicle || 'foot',
+    withdrawnCents: row.withdrawn_cents || 0,
+  };
+}
+
+function profilePatchToRow(patch) {
+  const row = {};
+  if ('name' in patch) row.name = patch.name;
+  if ('phone' in patch) row.phone = patch.phone;
+  if ('vehicle' in patch) row.vehicle = patch.vehicle;
+  if ('withdrawnCents' in patch) row.withdrawn_cents = patch.withdrawnCents;
+  return row;
+}
+
+const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,700;1,600&display=swap');`;
+
+const COLORS = {
+  bg: '#FFF9F4',
+  surface: '#FFFFFF',
+  ink: '#2A2420',
+  muted: '#8A8074',
+  accent: '#FF6A1A',
+  accentDark: '#E85A0C',
+  accentSoft: '#FFE3CF',
+  success: '#2F9E64',
+  successSoft: '#DCF3E5',
+  border: '#F1E4D8',
+};
+
+const STATUS = { NEW: 'new', IN_PROGRESS: 'in_progress', AWAITING_CONFIRM: 'awaiting_confirmation', CONFIRMED: 'confirmed' };
+
+const STATUS_META = {
+  [STATUS.NEW]: { labelKey: 'statusNew', color: COLORS.accent, bg: COLORS.accentSoft },
+  [STATUS.IN_PROGRESS]: { labelKey: 'statusInProgress', color: '#2E7FD9', bg: '#DCEBFB' },
+  [STATUS.AWAITING_CONFIRM]: { labelKey: 'statusAwaiting', color: COLORS.success, bg: COLORS.successSoft },
+  [STATUS.CONFIRMED]: { labelKey: 'statusConfirmed', color: COLORS.muted, bg: COLORS.border },
+};
+
+const VEHICLES = [
+  { id: 'foot', labelKey: 'vehicleFoot', icon: 'Footprints' },
+  { id: 'bike', labelKey: 'vehicleBike', icon: 'Bike' },
+  { id: 'ebike', labelKey: 'vehicleEbike', icon: 'Zap' },
+  { id: 'scooter', labelKey: 'vehicleScooter', icon: 'Bike' },
+  { id: 'car', labelKey: 'vehicleCar', icon: 'Car' },
+];
+
+const REPORTER_CENT_REWARD = 5;
+const EXECUTOR_CENT_REWARD = 50;
+
+function compressImage(file, maxWidth = 480, quality = 0.6) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function getLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { timeout: 8000 }
+    );
+  });
+}
+
+function formatTime(ts) {
+  return new Date(ts).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+const STATUS_RANK = { [STATUS.NEW]: 0, [STATUS.AWAITING_CONFIRM]: 1, [STATUS.CONFIRMED]: 2 };
+
+
+function formatEuro(cents) {
+  return `€${(cents / 100).toFixed(2)}`;
+}
+
+const VEHICLE_SPEED_KMH = { foot: 5, bike: 15, ebike: 20, scooter: 25, car: 30 };
+const GEO_VERIFY_THRESHOLD_M = 150;
+
+function haversineKm(a, b) {
+  if (!a || !b) return null;
+  const R = 6371;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function estimateMinutes(km, vehicleId) {
+  const speed = VEHICLE_SPEED_KMH[vehicleId] || 5;
+  return Math.max(1, Math.round((km / speed) * 60));
+}
+
+function LangDropdown({ lang, setLang, open, setOpen }) {
+  const LANGUAGES = [
+    { code: 'nl', flag: '🇳🇱', label: 'Nederlands' },
+    { code: 'en', flag: '🇬🇧', label: 'English' },
+    { code: 'ru', flag: '🇷🇺', label: 'Русский' },
+    { code: 'ar', flag: '🇸🇦', label: 'العربية' },
+  ];
+  if (!open) return null;
+  return (
+    <React.Fragment>
+      <div style={s.langMenuOverlay} onClick={() => setOpen(false)} />
+      <div style={s.langMenu}>
+        {LANGUAGES.map(({ code, flag, label }) => (
+          <button
+            key={code}
+            style={{ ...s.langMenuItem, ...(lang === code ? s.langMenuItemActive : {}) }}
+            onClick={() => { setLang(code); setOpen(false); }}
+          >
+            <span style={{ fontSize: 15, marginRight: 8 }}>{flag}</span>
+            <span>{label}</span>
+            {lang === code && <Icon name="Check" size={13} color={COLORS.accent} style={{ marginLeft: 'auto' }} />}
+          </button>
+        ))}
+      </div>
+    </React.Fragment>
+  );
+}
+
+function AuthScreen({ lang, setLang, t }) {
+  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+  const [signupRole, setSignupRole] = useState('reporter');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [checkEmail, setCheckEmail] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+
+  const submit = async () => {
+    if (!email.trim() || !password) { setError(t('fillFieldsError')); return; }
+    setBusy(true);
+    setError('');
+    try {
+      if (mode === 'signup') {
+        const { data, error } = await db.auth.signUp({ email: email.trim(), password });
+        if (error) throw error;
+        try { localStorage.setItem('schoonmelder:pendingRole:' + email.trim().toLowerCase(), signupRole); } catch (e) {}
+        if (data.session && data.user) {
+          try {
+            await db.from('profiles').insert({ id: data.user.id, role: signupRole, name: '', phone: '', vehicle: 'foot', withdrawn_cents: 0, created_at: Date.now() });
+          } catch (e) {}
+        }
+        if (!data.session) { setCheckEmail(true); }
+      } else {
+        const { error } = await db.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) throw error;
+      }
+    } catch (e) {
+      setError(e.message || 'Error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const oauth = async (provider) => {
+    setError('');
+    try {
+      const { error } = await db.auth.signInWithOAuth({ provider });
+      if (error) throw error;
+    } catch (e) {
+      setError(e.message || provider);
+    }
+  };
+
+  return (
+    <div style={s.page}>
+      <style>{FONT_IMPORT}{CSS_EXTRA}</style>
+      <div style={s.phoneWrap}>
+        <div style={s.phone}>
+          <div style={s.notch} />
+          <div style={s.topIconsRow}>
+            <button style={s.globeBtn} onClick={() => setLangMenuOpen((v) => !v)} aria-label="Language">
+              <Icon name="Globe" size={16} color="#fff" />
+            </button>
+          </div>
+          <div style={{ padding: '4px 22px 26px' }}>
+            <BrandMark />
+
+            {checkEmail ? (
+              <div style={{ textAlign: 'center', marginTop: 18 }}>
+                <div style={s.cardTitle}>{t('checkEmailTitle')}</div>
+                <p style={s.metaText}>{t('checkEmailNote').replace('{email}', email)}</p>
+                <button style={{ ...s.secondaryBtn, width: '100%', marginTop: 12 }} onClick={() => { setCheckEmail(false); setMode('login'); }}>{t('alreadyConfirmedBtn')}</button>
+              </div>
+            ) : (
+              <div>
+                <div style={s.roleSwitch}>
+                  <button style={{ ...s.roleBtn, ...(mode === 'login' ? s.roleBtnActive : {}) }} onClick={() => setMode('login')}>{t('signInTab')}</button>
+                  <button style={{ ...s.roleBtn, ...(mode === 'signup' ? s.roleBtnActive : {}) }} onClick={() => setMode('signup')}>{t('signUpTab')}</button>
+                </div>
+
+                {mode === 'signup' && (
+                  <div style={{ marginBottom: 4 }}>
+                    <div style={s.cardTitle2}>{t('chooseRoleLabel')}</div>
+                    <button style={{ ...s.roleBtn, ...(signupRole === 'reporter' ? s.roleBtnActive : {}), width: '100%', marginTop: 6, padding: '12px 0' }} onClick={() => setSignupRole('reporter')}>{t('roleReporterCta')}</button>
+                    <button style={{ ...s.roleBtn, ...(signupRole === 'executor' ? s.roleBtnActive : {}), width: '100%', marginTop: 6, padding: '12px 0' }} onClick={() => setSignupRole('executor')}>{t('roleExecutorCta')}</button>
+                  </div>
+                )}
+
+                <input type="email" placeholder={t('emailPh')} value={email} onChange={(e) => setEmail(e.target.value)} style={s.authInput} />
+                <input type="password" placeholder={t('passwordPh')} value={password} onChange={(e) => setPassword(e.target.value)} style={s.authInput} onKeyDown={(e) => e.key === 'Enter' && submit()} />
+
+                {error && <div style={s.errorText}>{error}</div>}
+
+                <button style={{ ...s.primaryBtn, width: '100%', marginTop: 6, ...(busy ? s.btnDisabled : {}) }} onClick={submit} disabled={busy}>
+                  {busy ? t('pleaseWaitBtn') : mode === 'signup' ? t('signUpBtn') : t('signInBtn')}
+                </button>
+
+                <div style={s.orDivider}><span>{t('orDividerText')}</span></div>
+
+                <button style={{ ...s.secondaryBtn, width: '100%', marginBottom: 8 }} onClick={() => oauth('google')}>
+                  <Icon name="Globe" size={15} style={{ marginRight: 8 }} /> {t('continueGoogle')}
+                </button>
+                <button style={{ ...s.secondaryBtn, width: '100%' }} onClick={() => oauth('apple')}>
+                  <Icon name="User" size={15} style={{ marginRight: 8 }} /> {t('continueApple')}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <LangDropdown lang={lang} setLang={setLang} open={langMenuOpen} setOpen={setLangMenuOpen} />
+      </div>
+      <p style={s.demoNote}>{t('authDemoNote')}</p>
+    </div>
+  );
+}
+
+function RoleSetupScreen({ userId, userEmail, onDone, onSignOut, lang, setLang, t }) {
+  const [role, setRole] = useState('reporter');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+
+  // If the role was already chosen at sign-up time (stored before email confirmation), apply it automatically.
+  useEffect(() => {
+    if (!userEmail) return;
+    try {
+      const key = 'schoonmelder:pendingRole:' + userEmail.toLowerCase();
+      const pending = localStorage.getItem(key);
+      if (pending === 'reporter' || pending === 'executor') {
+        localStorage.removeItem(key);
+        setRole(pending);
+        confirmWithRole(pending);
+      }
+    } catch (e) { /* ignore */ }
+    // eslint-disable-next-line
+  }, [userEmail]);
+
+  const confirmWithRole = async (chosenRole) => {
+    setBusy(true);
+    setError('');
+    try {
+      const row = { id: userId, role: chosenRole, name: '', phone: '', vehicle: 'foot', withdrawn_cents: 0, created_at: Date.now() };
+      const { error } = await db.from('profiles').insert(row);
+      if (error) throw error;
+      onDone(row);
+    } catch (e) {
+      setError(e.message || 'Error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={s.page}>
+      <style>{FONT_IMPORT}{CSS_EXTRA}</style>
+      <div style={s.phoneWrap}>
+        <div style={s.phone}>
+          <div style={s.notch} />
+          <div style={s.topIconsRow}>
+            <button style={s.globeBtn} onClick={() => setLangMenuOpen((v) => !v)} aria-label="Language">
+              <Icon name="Globe" size={16} color="#fff" />
+            </button>
+          </div>
+          <div style={{ padding: '4px 22px 26px' }}>
+            <BrandMark />
+            <div style={s.cardTitle}>{t('roleSetupTitle')}</div>
+            <p style={s.metaText}>{t('roleSetupNote')}</p>
+
+            <button style={{ ...s.roleBtn, ...(role === 'reporter' ? s.roleBtnActive : {}), width: '100%', marginTop: 14, padding: '14px 0' }} onClick={() => setRole('reporter')}>{t('roleReporterCta')}</button>
+            <button style={{ ...s.roleBtn, ...(role === 'executor' ? s.roleBtnActive : {}), width: '100%', marginTop: 8, padding: '14px 0' }} onClick={() => setRole('executor')}>{t('roleExecutorCta')}</button>
+
+            {error && <div style={s.errorText}>{error}</div>}
+
+            <button style={{ ...s.primaryBtn, width: '100%', marginTop: 16, ...(busy ? s.btnDisabled : {}) }} onClick={() => confirmWithRole(role)} disabled={busy}>
+              {busy ? t('savingBtn') : t('confirmBtn')}
+            </button>
+            <button style={{ ...s.secondaryBtn, width: '100%', marginTop: 8, background: 'none', border: 'none' }} onClick={onSignOut}>{t('signOutBtn')}</button>
+          </div>
+        </div>
+
+        <LangDropdown lang={lang} setLang={setLang} open={langMenuOpen} setOpen={setLangMenuOpen} />
+      </div>
+    </div>
+  );
+}
+
+function BrandMark() {
+  return (
+    <svg viewBox="0 -22 320 272" style={{ width: '100%', height: 150, display: 'block', marginBottom: 6 }}>
+      <defs><path id="authArc" d="M 20 145 A 140 140 0 0 1 300 145" fill="none" /></defs>
+      <text fontSize="21" fontWeight="700" letterSpacing="2" fill={COLORS.accent} style={{ fontFamily: "'Playfair Display', serif" }}>
+        <textPath href="#authArc" startOffset="50%" textAnchor="middle">SCHOONMELDER</textPath>
+      </text>
+      <g opacity="0.55" fill={COLORS.accentSoft}>
+        <rect x="46" y="150" width="26" height="34" />
+        <polygon points="46,150 59,138 72,150" />
+        <rect x="76" y="158" width="30" height="26" />
+        <rect x="230" y="156" width="28" height="28" />
+        <polygon points="230,156 244,144 258,156" />
+        <rect x="262" y="162" width="24" height="22" />
+        <path d="M40 184 Q160 158 280 184" stroke={COLORS.accentSoft} strokeWidth="4" fill="none" />
+      </g>
+      <g transform="translate(246,150)" opacity="0.6" stroke={COLORS.accentSoft} strokeWidth="2.5" fill="none" strokeLinecap="round">
+        <line x1="0" y1="0" x2="-13" y2="-13" />
+        <line x1="0" y1="0" x2="13" y2="-13" />
+        <line x1="0" y1="0" x2="-13" y2="13" />
+        <line x1="0" y1="0" x2="13" y2="13" />
+        <circle cx="0" cy="0" r="3" fill={COLORS.accentSoft} />
+        <line x1="0" y1="3" x2="0" y2="30" />
+      </g>
+      <g transform="translate(160,168)">
+        <rect x="-17" y="-30" width="34" height="10" rx="3" fill={COLORS.accent} />
+        <rect x="-9" y="-38" width="18" height="9" rx="3" fill={COLORS.accent} />
+        <path d="M -15 -19 L -11 22 C -10.5 25 -8 27 -5 27 L 5 27 C 8 27 10.5 25 11 22 L 15 -19 Z" fill={COLORS.accent} />
+        <path d="M -1 -8 C 8 -8 10 2 3 9 C 6 12 5 18 -1 19 C -2 10 -3 2 -1 -8 Z" fill="#fff" />
+      </g>
+      <g fill={COLORS.accent} opacity="0.9">
+        <path d="M18 208 C34 200 50 204 58 214 C46 216 30 220 18 208 Z" />
+        <path d="M18 208 C26 214 30 222 28 232" stroke={COLORS.accent} strokeWidth="1.6" fill="none" />
+        <path d="M302 208 C286 200 270 204 262 214 C274 216 290 220 302 208 Z" />
+        <path d="M302 208 C294 214 290 222 292 232" stroke={COLORS.accent} strokeWidth="1.6" fill="none" />
+      </g>
+      <text x="160" y="232" textAnchor="middle" fontSize="38" fontWeight="700" fill={COLORS.ink} style={{ fontFamily: "'Playfair Display', serif" }}>
+        S<tspan fontStyle="italic" fill={COLORS.ink}>&amp;</tspan>S <tspan fontSize="24">Co.</tspan>
+      </text>
+      <circle cx="243" cy="222" r="2.6" fill={COLORS.accent} />
+    </svg>
+  );
+}
+
+function App() {
+  const [lang, setLangState] = useState(() => {
+    try { return localStorage.getItem('schoonmelder:lang') || 'ru'; } catch (e) { return 'ru'; }
+  });
+  const setLang = (l) => {
+    setLangState(l);
+    try { localStorage.setItem('schoonmelder:lang', l); } catch (e) {}
+  };
+  const t = makeT(lang);
+  const [tab, setTab] = useState('main');
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dbError, setDbError] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+
+  const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
+  const [profileRow, setProfileRow] = useState(null);
+  const [authBusy, setAuthBusy] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    db.auth.getSession().then(({ data }) => { if (mounted) setSession(data.session || null); });
+    const { data: sub } = db.auth.onAuthStateChange((_event, sess) => setSession(sess));
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
+
+  const loadProfile = useCallback(async (uid) => {
+    try {
+      const { data } = await db.from('profiles').select('*').eq('id', uid).maybeSingle();
+      setProfileRow(data || null);
+    } catch (e) {
+      setProfileRow(null);
+    }
+    setAuthBusy(false);
+  }, []);
+
+  useEffect(() => {
+    if (session === undefined) return;
+    if (session === null) { setProfileRow(null); setAuthBusy(false); return; }
+    setAuthBusy(true);
+    loadProfile(session.user.id);
+  }, [session, loadProfile]);
+
+  const role = profileRow ? profileRow.role : 'reporter';
+  const profile = profileRow ? rowToProfile(profileRow) : { name: '', phone: '', vehicle: 'foot', withdrawnCents: 0 };
+
+  const saveProfile = useCallback(async (patch) => {
+    setProfileRow((p) => (p ? { ...p, ...profilePatchToRow(patch) } : p));
+    if (!session) return;
+    try { await db.from('profiles').update(profilePatchToRow(patch)).eq('id', session.user.id); } catch (e) {}
+  }, [session]);
+
+  const signOut = useCallback(async () => { await db.auth.signOut(); }, []);
+
+  const loadReports = useCallback(async () => {
+    try {
+      const { data, error } = await db.from('reports').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      setReports(data.map(rowToReport));
+      setDbError(false);
+    } catch (e) {
+      setDbError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadReports();
+    const id = setInterval(loadReports, 4000);
+    return () => clearInterval(id);
+  }, [loadReports]);
+
+  // Add a brand-new report: optimistic local update + insert into Supabase.
+  const addReport = useCallback(async (report) => {
+    setReports((prev) => [report, ...prev]);
+    try {
+      const { error } = await db.from('reports').insert(reportToInsertRow(report));
+      if (error) throw error;
+      setDbError(false);
+    } catch (e) {
+      setDbError(true);
+    }
+  }, []);
+
+  // Patch one existing report by id: optimistic local update + update in Supabase.
+  const patchReport = useCallback(async (id, patch, dbPatch) => {
+    setReports((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+    try {
+      const { error } = await db.from('reports').update(dbPatch).eq('id', id);
+      if (error) throw error;
+      setDbError(false);
+    } catch (e) {
+      setDbError(true);
+    }
+  }, []);
+
+  useEffect(() => { setTab('main'); }, [role]);
+
+  const totalPhotosSent = reports.reduce((sum, r) => sum + (r.photos?.length || (r.photo ? 1 : 0)), 0);
+  const earnedCents = role === 'reporter'
+    ? totalPhotosSent * REPORTER_CENT_REWARD
+    : reports.filter((r) => r.status !== STATUS.NEW).length * EXECUTOR_CENT_REWARD;
+  const balanceCents = Math.max(0, earnedCents - (profile.withdrawnCents || 0));
+
+  const TABS = role === 'reporter'
+    ? [
+        { id: 'main', label: t('navMessages'), icon: 'Home' },
+        { id: 'history', label: t('navHistory'), icon: 'ClipboardList' },
+        { id: 'bonus', label: t('navBonus'), icon: 'Wallet' },
+        { id: 'chat', label: t('navChat'), icon: 'MessageCircle' },
+        { id: 'profile', label: t('navProfile'), icon: 'User' },
+      ]
+    : [
+        { id: 'main', label: t('navJobs'), icon: 'Home' },
+        { id: 'history', label: t('navHistory'), icon: 'ClipboardList' },
+        { id: 'earnings', label: t('navEarnings'), icon: 'Wallet' },
+        { id: 'chat', label: t('navChat'), icon: 'MessageCircle' },
+        { id: 'profile', label: t('navProfile'), icon: 'User' },
+      ];
+
+  const LANGUAGES = [
+    { code: 'nl', flag: '🇳🇱', label: 'Nederlands' },
+    { code: 'en', flag: '🇬🇧', label: 'English' },
+    { code: 'ru', flag: '🇷🇺', label: 'Русский' },
+    { code: 'ar', flag: '🇸🇦', label: 'العربية' },
+  ];
+
+  if (session === undefined || (session && authBusy)) {
+    return (
+      <div style={s.page}>
+        <style>{FONT_IMPORT}{CSS_EXTRA}</style>
+        <div style={s.phoneWrap}>
+          <div style={{ ...s.phone, minHeight: 400, alignItems: 'center', justifyContent: 'center', display: 'flex' }}>
+            <Icon name="Loader2" className="sm-spin" size={26} color={COLORS.muted} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <AuthScreen lang={lang} setLang={setLang} t={t} />;
+  }
+
+  if (!profileRow) {
+    return <RoleSetupScreen userId={session.user.id} userEmail={session.user.email} onDone={(row) => setProfileRow(row)} onSignOut={signOut} lang={lang} setLang={setLang} t={t} />;
+  }
+
+  return (
+    <div style={s.page}>
+      <style>{FONT_IMPORT}{CSS_EXTRA}</style>
+      <div style={s.phoneWrap}>
+        <div style={s.phone}>
+          <div style={s.notch} />
+
+          <div style={s.topIconsRow}>
+            <button style={s.globeBtn} onClick={() => setLangMenuOpen((v) => !v)} aria-label="Language">
+              <Icon name="Globe" size={16} color="#fff" />
+            </button>
+            <button style={s.bellBtn}><Icon name="Bell" size={15} color={COLORS.ink} /></button>
+          </div>
+
+          <div style={s.archRow}>
+            <svg viewBox="0 -22 320 272" style={{ width: '100%', height: 158, display: 'block' }}>
+              <defs>
+                <path id="mainArc" d="M 20 145 A 140 140 0 0 1 300 145" fill="none" />
+              </defs>
+
+              {/* arc wordmark */}
+              <text fontSize="21" fontWeight="700" letterSpacing="2" fill={COLORS.accent} style={{ fontFamily: "'Playfair Display', serif" }}>
+                <textPath href="#mainArc" startOffset="50%" textAnchor="middle">SCHOONMELDER</textPath>
+              </text>
+
+              {/* skyline silhouette */}
+              <g opacity="0.55" fill={COLORS.accentSoft}>
+                <rect x="46" y="150" width="26" height="34" />
+                <polygon points="46,150 59,138 72,150" />
+                <rect x="76" y="158" width="30" height="26" />
+                <rect x="230" y="156" width="28" height="28" />
+                <polygon points="230,156 244,144 258,156" />
+                <rect x="262" y="162" width="24" height="22" />
+                <path d="M40 184 Q160 158 280 184" stroke={COLORS.accentSoft} strokeWidth="4" fill="none" />
+              </g>
+              {/* windmill */}
+              <g transform="translate(246,150)" opacity="0.6" stroke={COLORS.accentSoft} strokeWidth="2.5" fill="none" strokeLinecap="round">
+                <line x1="0" y1="0" x2="-13" y2="-13" />
+                <line x1="0" y1="0" x2="13" y2="-13" />
+                <line x1="0" y1="0" x2="-13" y2="13" />
+                <line x1="0" y1="0" x2="13" y2="13" />
+                <circle cx="0" cy="0" r="3" fill={COLORS.accentSoft} />
+                <line x1="0" y1="3" x2="0" y2="30" />
+              </g>
+
+              {/* bin with leaf, front and center */}
+              <g transform="translate(160,168)">
+                <rect x="-17" y="-30" width="34" height="10" rx="3" fill={COLORS.accent} />
+                <rect x="-9" y="-38" width="18" height="9" rx="3" fill={COLORS.accent} />
+                <path d="M -15 -19 L -11 22 C -10.5 25 -8 27 -5 27 L 5 27 C 8 27 10.5 25 11 22 L 15 -19 Z" fill={COLORS.accent} />
+                <path d="M -1 -8 C 8 -8 10 2 3 9 C 6 12 5 18 -1 19 C -2 10 -3 2 -1 -8 Z" fill="#fff" />
+              </g>
+
+              {/* leaf flourishes */}
+              <g fill={COLORS.accent} opacity="0.9">
+                <path d="M18 208 C34 200 50 204 58 214 C46 216 30 220 18 208 Z" />
+                <path d="M18 208 C26 214 30 222 28 232" stroke={COLORS.accent} strokeWidth="1.6" fill="none" />
+                <path d="M302 208 C286 200 270 204 262 214 C274 216 290 220 302 208 Z" />
+                <path d="M302 208 C294 214 290 222 292 232" stroke={COLORS.accent} strokeWidth="1.6" fill="none" />
+              </g>
+
+              {/* S&S Co. wordmark */}
+              <text x="160" y="232" textAnchor="middle" fontSize="38" fontWeight="700" fill={COLORS.ink} style={{ fontFamily: "'Playfair Display', serif" }}>
+                S<tspan fontStyle="italic" fill={COLORS.ink}>&amp;</tspan>S <tspan fontSize="24">Co.</tspan>
+              </text>
+              <circle cx="243" cy="222" r="2.6" fill={COLORS.accent} />
+            </svg>
+          </div>
+
+          <div style={{ ...s.brandSub, textAlign: 'center', marginBottom: 6, margin: '-8px auto 6px' }}>{role === 'reporter' ? t('subReporter') : t('subExecutor')}</div>
+
+          <div style={s.roleSwitch}>
+            <div style={{ ...s.roleBtn, ...s.roleBtnActive, cursor: 'default', flex: 1 }}>
+              {role === 'reporter' ? t('roleReporter') : t('roleExecutor')}
+            </div>
+          </div>
+
+          <div style={s.screen}>
+            {loading ? (
+              <div style={s.centerFill}><Icon name="Loader2" className="sm-spin" size={22} color={COLORS.muted} /></div>
+            ) : tab === 'main' ? (
+              role === 'reporter'
+                ? <ReporterMain t={t} reports={reports} addReport={addReport} patchReport={patchReport} balanceCents={balanceCents} setTab={setTab} />
+                : <ExecutorMain t={t} reports={reports} patchReport={patchReport} profile={profile} saveProfile={saveProfile} balanceCents={balanceCents} setTab={setTab} />
+            ) : tab === 'history' ? (
+              <HistoryView t={t} reports={reports} role={role} />
+            ) : tab === 'bonus' || tab === 'earnings' ? (
+              <EarningsView t={t} role={role} balanceCents={balanceCents} earnedCents={earnedCents} reports={reports} onWithdraw={() => setWithdrawOpen(true)} />
+            ) : tab === 'chat' ? (
+              <ChatView t={t} role={role} />
+            ) : (
+              <ProfileView t={t} role={role} reports={reports} setTab={setTab} profile={profile} saveProfile={saveProfile} signOut={signOut} />
+            )}
+          </div>
+
+          <div style={s.bottomNav}>
+            {TABS.map(({ id, label, icon: iconName }) => (
+              <button key={id} style={s.navBtn} onClick={() => setTab(id)}>
+                <Icon name={iconName} size={18} color={tab === id ? COLORS.accent : COLORS.muted} />
+                <span style={{ ...s.navLabel, color: tab === id ? COLORS.accent : COLORS.muted, fontWeight: tab === id ? 600 : 500 }}>{label}</span>
+              </button>
+            ))}
+          </div>
+
+          {withdrawOpen && (
+            <WithdrawModal
+              t={t}
+              balanceCents={balanceCents}
+              onClose={() => setWithdrawOpen(false)}
+              onConfirm={() => { saveProfile({ withdrawnCents: (profile.withdrawnCents || 0) + balanceCents }); setWithdrawOpen(false); }}
+            />
+          )}
+        </div>
+
+        {langMenuOpen && (
+          <React.Fragment>
+            <div style={s.langMenuOverlay} onClick={() => setLangMenuOpen(false)} />
+            <div style={s.langMenu}>
+              {LANGUAGES.map(({ code, flag, label }) => (
+                <button
+                  key={code}
+                  style={{ ...s.langMenuItem, ...(lang === code ? s.langMenuItemActive : {}) }}
+                  onClick={() => { setLang(code); setLangMenuOpen(false); }}
+                >
+                  <span style={{ fontSize: 16, marginRight: 8 }}>{flag}</span>
+                  <span>{label}</span>
+                  {lang === code && <Icon name="Check" size={13} color={COLORS.accent} style={{ marginLeft: 'auto' }} />}
+                </button>
+              ))}
+            </div>
+          </React.Fragment>
+        )}
+      </div>
+      {dbError && <p style={s.dbErrorNote}>Нет связи с базой данных — проверь интернет. Последние данные могли не сохраниться.</p>}
+      <p style={s.demoNote}>{t('demoNote')}</p>
+    </div>
+  );
+}
+
+function ReporterMain({ t, reports, addReport, patchReport, balanceCents, setTab }) {
+  const [photos, setPhotos] = useState([]);
+  const [comment, setComment] = useState('');
+  const [coords, setCoords] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef(null);
+
+  const active = reports.filter((r) => r.status !== STATUS.CONFIRMED);
+  const [photoError, setPhotoError] = useState('');
+  const [justSent, setJustSent] = useState(false);
+
+  const addPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError('');
+    if (!coords && !locating) {
+      setLocating(true);
+      getLocation().then((loc) => { setCoords(loc); setLocating(false); });
+    }
+    try {
+      const dataUrl = await compressImage(file);
+      setPhotos((p) => [...p, dataUrl].slice(0, 3));
+    } catch (err) {
+      setPhotoError(t('photoErrorText'));
+    }
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const removePhoto = (i) => setPhotos((p) => p.filter((_, idx) => idx !== i));
+
+  const submit = async () => {
+    if (photos.length === 0) return;
+    setBusy(true);
+    const report = { id: uid(), photos, coords, comment: comment.trim(), createdAt: Date.now(), status: STATUS.NEW };
+    await addReport(report);
+    setPhotos([]); setComment(''); setCoords(null); setBusy(false);
+    setJustSent(true);
+    setTimeout(() => setJustSent(false), 3000);
+  };
+
+  const confirmDone = async (id) => {
+    await patchReport(id, { status: STATUS.CONFIRMED, confirmedAt: Date.now() }, { status: STATUS.CONFIRMED });
+  };
+
+  return (
+    <div style={s.viewCol}>
+      <button style={s.balanceCard} onClick={() => setTab('bonus')}>
+        <div>
+          <div style={s.balanceLabel}>{t('balanceBonusLabel')}</div>
+          <div style={s.balanceAmount}>{formatEuro(balanceCents)}</div>
+        </div>
+        <Icon name="Wallet" size={22} color={COLORS.accent} />
+      </button>
+
+      {justSent && (
+        <div style={s.successBanner}><Icon name="Check" size={15} style={{ marginRight: 6 }} /> {t('sentBanner')}</div>
+      )}
+
+      <div style={s.card}>
+        <div style={s.cardTitle}>{t('reportFormTitle')}</div>
+
+        <div style={s.photoGrid}>
+          {photos.map((p, i) => (
+            <div key={i} style={s.photoThumbWrap}>
+              <img src={p} style={s.photoThumb} alt="" />
+              <button style={s.photoRemove} onClick={() => removePhoto(i)}><Icon name="X" size={11} color="#fff" /></button>
+            </div>
+          ))}
+          {photos.length < 3 && (
+            <label style={s.photoAdd}>
+              <Icon name="Plus" size={18} color={COLORS.accent} />
+              <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={addPhoto} />
+            </label>
+          )}
+        </div>
+        {photoError && <div style={s.errorText}>{photoError}</div>}
+
+        <div style={s.mapBox}>
+          <Icon name="MapPin" size={16} color={COLORS.accent} />
+          <span style={s.metaText}>{locating ? t('locating') : coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : t('locationPending')}</span>
+        </div>
+
+        <div style={s.cardTitle2}>{t('commentLabel')}</div>
+
+        <textarea
+          placeholder={t('commentPlaceholder')}
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          style={s.textarea}
+          rows={3}
+        />
+
+        <button style={{ ...s.primaryBtn, width: '100%', marginTop: 10, ...((busy || photos.length === 0) ? s.btnDisabled : {}) }} onClick={submit} disabled={busy || photos.length === 0}>
+          {busy ? t('submitBtnBusy') : t('submitBtn')}
+        </button>
+        {photos.length === 0 && <div style={s.hint}>{t('needPhotoHint')}</div>}
+      </div>
+
+      <div style={s.sectionLabel}>{t('activeTitle')} ({active.length})</div>
+      {active.length === 0 && <div style={s.emptyState}>{t('noActive')}</div>}
+      {active.map((r) => (
+        <ReportCard t={t} key={r.id} report={r}>
+          {r.status === STATUS.AWAITING_CONFIRM && (
+            <button style={{ ...s.primaryBtn, width: '100%', marginTop: 10 }} onClick={() => confirmDone(r.id)}>
+              <Icon name="Check" size={15} style={{ marginRight: 6 }} /> {t('confirmDoneBtn')}
+            </button>
+          )}
+        </ReportCard>
+      ))}
+    </div>
+  );
+}
+
+function ExecutorMain({ t, reports, patchReport, profile, saveProfile, balanceCents, setTab }) {
+  const open = reports.filter((r) => r.status === STATUS.NEW || r.status === STATUS.IN_PROGRESS);
+  const [jobStep, setJobStep] = useState({}); // { [id]: 'route' | 'onsite' }
+  const [myLoc, setMyLoc] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const watchIdsRef = useRef({});
+  const lastSentRef = useRef({});
+
+  useEffect(() => {
+    // Resume "route" step locally for any job this session already marked in_progress,
+    // so a page refresh doesn't strand the executor mid-job.
+    reports.forEach((r) => {
+      if (r.status === STATUS.IN_PROGRESS && !jobStep[r.id] && !watchIdsRef.current[r.id]) {
+        setJobStep((m) => ({ ...m, [r.id]: 'route' }));
+      }
+    });
+    // eslint-disable-next-line
+  }, [reports]);
+
+  const startWatching = (id) => {
+    if (!navigator.geolocation || watchIdsRef.current[id]) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+        setMyLoc({ lat, lng });
+        const now = Date.now();
+        if (!lastSentRef.current[id] || now - lastSentRef.current[id] > 6000) {
+          lastSentRef.current[id] = now;
+          patchReport(
+            id,
+            { executorCoords: { lat, lng }, executorUpdatedAt: now },
+            { executor_lat: lat, executor_lng: lng, executor_updated_at: now }
+          );
+        }
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+    watchIdsRef.current[id] = watchId;
+  };
+
+  const stopWatching = (id) => {
+    if (watchIdsRef.current[id] != null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchIdsRef.current[id]);
+      delete watchIdsRef.current[id];
+    }
+  };
+
+  useEffect(() => () => {
+    Object.values(watchIdsRef.current).forEach((wid) => navigator.geolocation && navigator.geolocation.clearWatch(wid));
+  }, []);
+
+  const acceptJob = async (id) => {
+    setJobStep((m) => ({ ...m, [id]: 'route' }));
+    await patchReport(id, { status: STATUS.IN_PROGRESS }, { status: STATUS.IN_PROGRESS });
+    if (!myLoc && !locating) {
+      setLocating(true);
+      const loc = await getLocation();
+      setMyLoc(loc);
+      setLocating(false);
+    }
+    startWatching(id);
+  };
+
+  const openNav = (coords) => {
+    if (!coords) return;
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`, '_blank');
+  };
+
+  const onCompletionPhoto = async (e, id) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    stopWatching(id);
+    const [dataUrl, completionCoords] = await Promise.all([compressImage(file), getLocation()]);
+    const completedAt = Date.now();
+    await patchReport(
+      id,
+      { status: STATUS.AWAITING_CONFIRM, completionPhoto: dataUrl, completionCoords, completedAt },
+      {
+        status: STATUS.AWAITING_CONFIRM,
+        completion_photo: dataUrl,
+        completion_lat: completionCoords ? completionCoords.lat : null,
+        completion_lng: completionCoords ? completionCoords.lng : null,
+        completed_at: completedAt,
+      }
+    );
+    setJobStep((m) => { const n = { ...m }; delete n[id]; return n; });
+  };
+
+  return (
+    <div style={s.viewCol}>
+      <button style={s.balanceCard} onClick={() => setTab('earnings')}>
+        <div>
+          <div style={s.balanceLabel}>{t('balanceIncomeLabel')}</div>
+          <div style={s.balanceAmount}>{formatEuro(balanceCents)}</div>
+        </div>
+        <Icon name="Wallet" size={22} color={COLORS.accent} />
+      </button>
+
+      <div style={s.card}>
+        <div style={s.cardTitle2}>{t('vehicleTitle')}</div>
+        <div style={s.vehicleRow}>
+          {VEHICLES.map(({ id, labelKey, icon: iconName }) => (
+            <button key={id} style={{ ...s.vehicleBtn, ...(profile.vehicle === id ? s.vehicleBtnActive : {}) }} onClick={() => saveProfile({ vehicle: id })}>
+              <Icon name={iconName} size={17} color={profile.vehicle === id ? COLORS.accent : COLORS.muted} />
+              <span style={{ fontSize: 9.5, color: profile.vehicle === id ? COLORS.accent : COLORS.muted, marginTop: 3 }}>{t(labelKey)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={s.sectionLabel}>{t('newJobsTitle')} ({open.length})</div>
+      {open.length === 0 && <div style={s.emptyState}>{t('noNewJobs')}</div>}
+      {open.map((r) => {
+        const step = jobStep[r.id];
+        return (
+          <ReportCard t={t} key={r.id} report={r} priceCents={EXECUTOR_CENT_REWARD}>
+            {!step && (
+              <button style={{ ...s.primaryBtn, width: '100%', marginTop: 10 }} onClick={() => acceptJob(r.id)}>{t('acceptJobBtn')}</button>
+            )}
+            {step === 'route' && (
+              <RouteView
+                t={t}
+                from={myLoc}
+                to={r.coords}
+                locating={locating}
+                vehicle={profile.vehicle}
+                onNavigate={() => openNav(r.coords)}
+                onArrived={() => setJobStep((m) => ({ ...m, [r.id]: 'onsite' }))}
+              />
+            )}
+            {step === 'onsite' && (
+              <label style={{ ...s.primaryBtn, width: '100%', marginTop: 10, textAlign: 'center' }}>
+                <Icon name="ImagePlus" size={14} style={{ marginRight: 6 }} /> {t('imDoneBtn')}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => onCompletionPhoto(e, r.id)} />
+              </label>
+            )}
+          </ReportCard>
+        );
+      })}
+    </div>
+  );
+}
+
+function RouteView({ t, from, to, locating, vehicle, onNavigate, onArrived }) {
+  const km = haversineKm(from, to);
+  const mins = km != null ? estimateMinutes(km, vehicle) : null;
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <RouteMap />
+      <div style={s.routeStatsRow}>
+        <div>
+          <div style={s.routeStatValue}>{locating ? '…' : km != null ? `${km.toFixed(1)} km` : '—'}</div>
+          <div style={s.metaText}>{t('distanceLabel')}</div>
+        </div>
+        <div>
+          <div style={s.routeStatValue}>{locating ? '…' : mins != null ? `${mins} min` : '—'}</div>
+          <div style={s.metaText}>{t('etaLabel')}</div>
+        </div>
+      </div>
+      <div style={s.rowGap}>
+        <button style={{ ...s.secondaryBtn, ...(!to ? s.btnDisabled : {}) }} onClick={onNavigate} disabled={!to}>
+          <Icon name="Navigation" size={14} style={{ marginRight: 6 }} /> {t('openNavBtn')}
+        </button>
+        <button style={s.primaryBtn} onClick={onArrived}>{t('imHereBtn')}</button>
+      </div>
+    </div>
+  );
+}
+
+function RouteMap() {
+  return (
+    <svg viewBox="0 0 300 140" style={s.routeMapSvg}>
+      <rect x="0" y="0" width="300" height="140" rx="12" fill="#F6EEE3" />
+      <path d="M18 24 L60 24 M18 40 L45 40 M255 100 L282 100 M260 116 L282 116" stroke="#E6D8C7" strokeWidth="4" strokeLinecap="round" />
+      <path d="M24 118 C 90 122, 120 60, 150 58 C 190 56, 200 30, 268 26" fill="none" stroke={COLORS.accent} strokeWidth="3.5" strokeDasharray="1 10" strokeLinecap="round" />
+      <circle cx="24" cy="118" r="7" fill={COLORS.ink} />
+      <circle cx="24" cy="118" r="3" fill="#fff" />
+      <g transform="translate(258, 10)">
+        <path d="M10 0C4.5 0 0 4.5 0 10c0 7.5 10 20 10 20s10-12.5 10-20c0-5.5-4.5-10-10-10z" fill={COLORS.accent} />
+        <circle cx="10" cy="10" r="4" fill="#fff" />
+      </g>
+    </svg>
+  );
+}
+
+function LiveTrackingBlock({ t, report }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const km = (report.coords && report.executorCoords) ? haversineKm(report.coords, report.executorCoords) : null;
+  const secondsAgo = report.executorUpdatedAt != null ? Math.max(0, Math.round((now - report.executorUpdatedAt) / 1000)) : null;
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={s.liveBadgeRow}>
+        <span style={s.pulseDot} />
+        <span style={s.liveLabel}>{t('executorEnRoute')}</span>
+      </div>
+      <div style={{ position: 'relative' }}>
+        <RouteMap />
+        <span style={s.mapPulseDot} />
+      </div>
+      <div style={s.routeStatsRow}>
+        <div>
+          <div style={s.routeStatValue}>{km != null ? `${km.toFixed(1)} km` : '—'}</div>
+          <div style={s.metaText}>{t('distanceLabel')}</div>
+        </div>
+        <div>
+          <div style={s.routeStatValue}>{secondsAgo != null ? `${secondsAgo}s` : '—'}</div>
+          <div style={s.metaText}>{t('updatedAgoLabel')}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HistoryView({ t, reports, role }) {
+  const items = role === 'reporter'
+    ? reports.filter((r) => r.status === STATUS.CONFIRMED)
+    : reports.filter((r) => r.status === STATUS.AWAITING_CONFIRM || r.status === STATUS.CONFIRMED);
+
+  return (
+    <div style={s.viewCol}>
+      <div style={s.sectionLabel}>{t('historyTitle')} ({items.length})</div>
+      {items.length === 0 && <div style={s.emptyState}>{t('noHistory')}</div>}
+      {items.map((r) => <ReportCard t={t} key={r.id} report={r} priceCents={role === 'executor' ? EXECUTOR_CENT_REWARD : REPORTER_CENT_REWARD} />)}
+    </div>
+  );
+}
+
+function EarningsView({ t, role, balanceCents, earnedCents, reports, onWithdraw }) {
+  const rewardCents = role === 'reporter' ? REPORTER_CENT_REWARD : EXECUTOR_CENT_REWARD;
+  const count = role === 'reporter'
+    ? reports.reduce((sum, r) => sum + (r.photos?.length || (r.photo ? 1 : 0)), 0)
+    : reports.filter((r) => r.status !== STATUS.NEW).length;
+
+  return (
+    <div style={s.viewCol}>
+      <div style={{ ...s.card, textAlign: 'center' }}>
+        <div style={s.balanceLabel}>{role === 'reporter' ? t('balanceBonusLabel2') : t('balanceIncomeLabel2')}</div>
+        <div style={{ ...s.balanceAmount, fontSize: 28, margin: '6px 0 14px' }}>{formatEuro(balanceCents)}</div>
+        <button style={{ ...s.primaryBtn, width: '100%', ...(balanceCents === 0 ? s.btnDisabled : {}) }} onClick={onWithdraw} disabled={balanceCents === 0}>
+          <Icon name="ArrowDownToLine" size={15} style={{ marginRight: 6 }} /> {t('withdrawBtn')}
+        </button>
+      </div>
+
+      <div style={s.card}>
+        <div style={s.statRow}><span style={s.metaText}>{t('totalEarnedLabel')}</span><span style={s.statValue}>{formatEuro(earnedCents)}</span></div>
+        <div style={{ ...s.statRow, marginTop: 8 }}>
+          <span style={s.metaText}>{role === 'reporter' ? t('sentPhotosLabel') : t('doneJobsLabel')}</span>
+          <span style={s.statValue}>{count}</span>
+        </div>
+        <div style={{ ...s.metaText, marginTop: 10 }}>
+          {role === 'reporter'
+            ? t('explainReporter').replace('{n}', rewardCents)
+            : t('explainExecutor').replace('{n}', formatEuro(rewardCents))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WithdrawModal({ t, balanceCents, onClose, onConfirm }) {
+  const [method, setMethod] = useState('card');
+  const [done, setDone] = useState(false);
+  const methods = [
+    { id: 'card', label: t('methodCard'), sub: t('methodCardSub'), icon: 'CreditCard' },
+    { id: 'paypal', label: 'PayPal', sub: t('methodPaypalSub'), icon: 'Wallet' },
+    { id: 'gift', label: t('methodGift'), sub: t('methodGiftSub'), icon: 'Gift' },
+  ];
+
+  return (
+    <div style={s.modalOverlay} onClick={onClose}>
+      <div style={s.modalSheet} onClick={(e) => e.stopPropagation()}>
+        {done ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={s.doneCircle}><Icon name="Check" size={26} color="#fff" /></div>
+            <div style={s.cardTitle}>{t('withdrawDoneTitle')}</div>
+            <div style={s.metaText}>{t('withdrawDoneSub')}</div>
+          </div>
+        ) : (
+          <div>
+            <div style={s.balanceLabel}>{t('withdrawAvailable')}</div>
+            <div style={{ ...s.balanceAmount, fontSize: 24, margin: '4px 0 14px' }}>{formatEuro(balanceCents)}</div>
+            <div style={s.cardTitle2}>{t('withdrawMethodTitle')}</div>
+            {methods.map(({ id, label, sub, icon: iconName }) => (
+              <button key={id} style={{ ...s.methodRow, ...(method === id ? s.methodRowActive : {}) }} onClick={() => setMethod(id)}>
+                <Icon name={iconName} size={18} color={method === id ? COLORS.accent : COLORS.muted} />
+                <div style={{ textAlign: 'left', marginLeft: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink }}>{label}</div>
+                  <div style={{ fontSize: 11, color: COLORS.muted }}>{sub}</div>
+                </div>
+              </button>
+            ))}
+            <button style={{ ...s.primaryBtn, width: '100%', marginTop: 12 }} onClick={() => { setDone(true); setTimeout(onConfirm, 1100); }}>
+              {t('withdrawConfirm')}
+            </button>
+            <button style={{ ...s.secondaryBtn, width: '100%', marginTop: 8, background: 'none', border: 'none' }} onClick={onClose}>{t('withdrawCancel')}</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChatView({ t, role }) {
+  const otherName = role === 'reporter' ? t('roleExecutor') : t('roleReporter');
+  const [messages, setMessages] = useState([
+    { id: 'm1', from: 'other', text: role === 'reporter' ? t('chatHelloReporter') : t('chatHelloExecutor'), ts: Date.now() },
+  ]);
+  const [input, setInput] = useState('');
+  const scrollRef = useRef(null);
+  useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages]);
+
+  const send = () => {
+    const text = input.trim();
+    if (!text) return;
+    setMessages((m) => [...m, { id: uid(), from: 'me', text, ts: Date.now() }]);
+    setInput('');
+    setTimeout(() => setMessages((m) => [...m, { id: uid(), from: 'other', text: t('chatAutoReply'), ts: Date.now() }]), 900);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: 440 }}>
+      <div style={s.chatHeader}>{otherName}</div>
+      <div ref={scrollRef} style={s.chatScroll}>
+        {messages.map((m) => (
+          <div key={m.id} style={{ ...s.chatBubbleRow, justifyContent: m.from === 'me' ? 'flex-end' : 'flex-start' }}>
+            <div style={{ ...s.chatBubble, ...(m.from === 'me' ? s.chatBubbleMine : s.chatBubbleOther) }}>{m.text}</div>
+          </div>
+        ))}
+      </div>
+      <div style={s.chatInputRow}>
+        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder={t('chatPlaceholder')} style={s.chatInput} />
+        <button style={s.chatSendBtn} onClick={send}><Icon name="Send" size={16} color="#fff" /></button>
+      </div>
+    </div>
+  );
+}
+
+function ProfileView({ t, role, reports, setTab, profile, saveProfile, signOut }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(profile.name);
+  const [phone, setPhone] = useState(profile.phone);
+  useEffect(() => { setName(profile.name); setPhone(profile.phone); }, [profile.name, profile.phone]);
+
+  const myCount = role === 'reporter' ? reports.length : reports.filter((r) => r.status !== STATUS.NEW).length;
+  const initials = (name || t(role === 'reporter' ? 'roleReporter' : 'roleExecutor')).trim().slice(0, 1).toUpperCase();
+
+  return (
+    <div style={s.viewCol}>
+      <div style={{ ...s.card, textAlign: 'center' }}>
+        <div style={s.avatar}>{initials}</div>
+        {editing ? (
+          <div>
+            <input style={s.profileInput} placeholder={t('namePh')} value={name} onChange={(e) => setName(e.target.value)} />
+            <input style={s.profileInput} placeholder={t('phonePh')} value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <button style={{ ...s.primaryBtn, width: '100%', marginTop: 4 }} onClick={() => { saveProfile({ name, phone }); setEditing(false); }}>{t('profileSave')}</button>
+          </div>
+        ) : (
+          <div>
+            <div style={s.profileName}>{name || (role === 'reporter' ? t('roleReporter') : t('roleExecutor'))}</div>
+            <div style={s.metaText}>{phone || t('noPhone')}</div>
+            <button style={{ ...s.secondaryBtn, width: '100%', marginTop: 10 }} onClick={() => setEditing(true)}>{t('profileEdit')}</button>
+          </div>
+        )}
+      </div>
+
+      <div style={s.card}>
+        <div style={s.statRow}>
+          <span style={s.metaText}>{role === 'reporter' ? t('statSentMessages') : t('statDoneJobs')}</span>
+          <span style={s.statValue}>{myCount}</span>
+        </div>
+      </div>
+
+      {role === 'executor' && (
+        <div style={s.card}>
+          <div style={s.cardTitle2}>{t('myVehicleLabel')}</div>
+          <div style={s.metaText}>{t(VEHICLES.find((v) => v.id === profile.vehicle)?.labelKey || 'vehicleFoot')}</div>
+        </div>
+      )}
+
+      <button style={{ ...s.card, ...s.listBtn }} onClick={() => setTab(role === 'reporter' ? 'bonus' : 'earnings')}>
+        <span>{role === 'reporter' ? t('myBonusesLabel') : t('myIncomeLabel')}</span><Icon name="Wallet" size={16} color={COLORS.muted} />
+      </button>
+      <button style={{ ...s.card, ...s.listBtn }} onClick={() => setTab('chat')}>
+        <span>{t('supportLabel')}</span><Icon name="MessageCircle" size={16} color={COLORS.muted} />
+      </button>
+      <button style={{ ...s.secondaryBtn, width: '100%', background: 'none', border: `1px solid ${COLORS.border}` }} onClick={signOut}>
+        {t('signOutAccountBtn')}
+      </button>
+    </div>
+  );
+}
+
+function ReportCard({ t, report, children, priceCents }) {
+  const meta = STATUS_META[report.status];
+  const [compare, setCompare] = useState(50);
+  const photos = report.photos || (report.photo ? [report.photo] : []);
+  const hasBoth = photos[0] && report.completionPhoto;
+
+  let geoBadge = null;
+  if (hasBoth) {
+    if (report.coords && report.completionCoords) {
+      const meters = haversineKm(report.coords, report.completionCoords) * 1000;
+      const ok = meters <= GEO_VERIFY_THRESHOLD_M;
+      geoBadge = (
+        <div style={{ ...s.geoBadge, color: ok ? COLORS.success : '#D9432B', background: ok ? COLORS.successSoft : '#FBE0DB' }}>
+          {ok ? <Icon name="ShieldCheck" size={13} /> : <Icon name="ShieldAlert" size={13} />}
+          <span>{ok ? t('geoVerified').replace('{n}', meters.toFixed(0)) : t('geoMismatch').replace('{n}', (meters / 1000).toFixed(1))}</span>
+        </div>
+      );
+    } else {
+      geoBadge = (
+        <div style={{ ...s.geoBadge, color: COLORS.muted, background: COLORS.border }}>
+          <Icon name="ShieldAlert" size={13} />
+          <span>{t('geoUnavailable')}</span>
+        </div>
+      );
+    }
+  }
+
+  return (
+    <div style={s.card}>
+      <div style={s.badgeRow}>
+        <span style={{ ...s.badge, color: meta.color, background: meta.bg }}>{t(meta.labelKey)}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {priceCents != null && <span style={s.priceTag}>{formatEuro(priceCents)}</span>}
+          <span style={s.metaText}><Icon name="Clock" size={12} style={{ verticalAlign: -2, marginRight: 4 }} />{formatTime(report.createdAt)}</span>
+        </div>
+      </div>
+
+      {hasBoth ? (
+        <div>
+          <div style={s.compareBox}>
+            <img src={report.completionPhoto} alt={t("afterLabel")} style={s.compareImgFull} />
+            <div style={{ ...s.compareImgClip, clipPath: `inset(0 ${100 - compare}% 0 0)` }}>
+              <img src={photos[0]} alt={t("beforeLabel")} style={s.compareImgFull} />
+            </div>
+            <span style={{ ...s.compareTag, left: 8 }}>{t('beforeLabel')}</span>
+            <span style={{ ...s.compareTag, right: 8 }}>{t('afterLabel')}</span>
+          </div>
+          <input type="range" min={0} max={100} value={compare} onChange={(e) => setCompare(+e.target.value)} style={s.slider} />
+          {geoBadge}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 6 }}>
+          {photos.map((p, i) => <img key={i} src={p} alt="" style={{ ...s.previewImg, maxHeight: 140, flex: 1 }} />)}
+        </div>
+      )}
+
+      {report.status === STATUS.IN_PROGRESS && (
+        <LiveTrackingBlock t={t} report={report} />
+      )}
+
+      {report.comment && <div style={s.metaRow}><Icon name="MessageSquare" size={13} color={COLORS.muted} /><span style={s.metaText}>{report.comment}</span></div>}
+      {report.coords && <div style={s.metaRow}><Icon name="MapPin" size={13} color={COLORS.muted} /><span style={s.metaText}>{report.coords.lat.toFixed(5)}, {report.coords.lng.toFixed(5)}</span></div>}
+      {children}
+    </div>
+  );
+}
+
+const s = {
+  page: { minHeight: '100vh', background: '#F3ECE3', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 16px', fontFamily: "'IBM Plex Sans', sans-serif" },
+  phone: {
+    width: 380, maxWidth: '100%', background: COLORS.surface, borderRadius: 32,
+    boxShadow: '0 30px 60px -20px rgba(255,106,26,0.35), 0 0 0 8px #FFFFFF, 0 0 0 9px ' + COLORS.accent,
+    overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column',
+  },
+  notch: { width: 120, height: 18, background: COLORS.accent, borderRadius: '0 0 14px 14px', margin: '0 auto' },
+  header: { padding: '4px 20px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
+  topIconsRow: { display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 16px 0' },
+  archRow: { padding: '0 12px 0' },
+  brandCenterRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: -14 },
+  brand: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 800, fontSize: 22, color: COLORS.ink, letterSpacing: -0.3 },
+  brandSub: { fontSize: 11, color: COLORS.muted, marginTop: 2, maxWidth: 240 },
+  bellBtn: { width: 32, height: 32, borderRadius: 10, border: `1px solid ${COLORS.border}`, background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  roleSwitch: { display: 'flex', gap: 6, padding: '0 20px 12px' },
+  roleBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 0', borderRadius: 10, border: `1px solid ${COLORS.border}`, background: COLORS.bg, color: COLORS.muted, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'IBM Plex Sans', sans-serif" },
+  roleBtnActive: { background: COLORS.accent, color: '#fff', border: `1px solid ${COLORS.accent}` },
+  globeBtn: {
+    width: 32, height: 32, borderRadius: '50%', border: 'none', cursor: 'pointer',
+    background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accentDark})`,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 3px 8px rgba(255,106,26,0.45)',
+  },
+  phoneWrap: { width: 380, maxWidth: '100%', position: 'relative' },
+  langMenuOverlay: { position: 'fixed', inset: 0, zIndex: 20 },
+  langMenu: {
+    position: 'absolute', top: 54, right: 20, zIndex: 21, background: COLORS.surface,
+    borderRadius: 14, border: `1px solid ${COLORS.border}`, boxShadow: '0 12px 28px rgba(42,36,32,0.18)',
+    padding: 6, minWidth: 168,
+  },
+  langMenuItem: {
+    display: 'flex', alignItems: 'center', width: '100%', padding: '9px 10px', borderRadius: 9,
+    border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, color: COLORS.ink,
+    fontFamily: "'IBM Plex Sans', sans-serif", textAlign: 'left',
+  },
+  langMenuItemActive: { background: COLORS.accentSoft, fontWeight: 700 },
+  screen: { background: COLORS.bg, padding: '14px 16px 20px', minHeight: 460, maxHeight: 540, overflowY: 'auto' },
+  centerFill: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 400 },
+  viewCol: { display: 'flex', flexDirection: 'column', gap: 12 },
+  card: { background: COLORS.surface, borderRadius: 16, padding: 14, border: `1px solid ${COLORS.border}` },
+  cardTitle: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 15, color: COLORS.ink, marginBottom: 10 },
+  cardTitle2: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 12.5, color: COLORS.ink, marginTop: 4, marginBottom: 8 },
+  previewImg: { width: '100%', borderRadius: 12, display: 'block', objectFit: 'cover', maxHeight: 220 },
+  metaRow: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 },
+  metaText: { fontSize: 12.5, color: COLORS.muted },
+  textarea: { width: '100%', padding: 10, borderRadius: 10, border: `1px solid ${COLORS.border}`, fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 13, resize: 'none', boxSizing: 'border-box' },
+  rowGap: { display: 'flex', gap: 8, marginTop: 10 },
+  primaryBtn: { flex: 1, background: COLORS.accent, color: '#fff', border: 'none', borderRadius: 10, padding: '11px 8px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  secondaryBtn: { flex: 1, background: COLORS.surface, color: COLORS.ink, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '11px 8px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  successBanner: { display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.successSoft, color: COLORS.success, borderRadius: 10, padding: '9px 10px', fontSize: 13, fontWeight: 600 },
+  errorText: { color: '#D9432B', fontSize: 11.5, marginTop: -4, marginBottom: 6 },
+  btnDisabled: { opacity: 0.4, cursor: 'not-allowed' },
+  authInput: { width: '100%', marginTop: 10, padding: '11px 12px', borderRadius: 10, border: `1px solid ${COLORS.border}`, fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 13.5, boxSizing: 'border-box' },
+  orDivider: { display: 'flex', alignItems: 'center', textAlign: 'center', color: COLORS.muted, fontSize: 11.5, margin: '14px 0 10px' },
+  sectionLabel: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 13, color: COLORS.ink, marginTop: 4 },
+  emptyState: { fontSize: 12.5, color: COLORS.muted, padding: '8px 2px' },
+  badgeRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  badge: { fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 999 },
+  priceTag: { fontSize: 11.5, fontWeight: 700, color: COLORS.accentDark },
+  compareBox: { position: 'relative', width: '100%', aspectRatio: '4 / 3', borderRadius: 12, overflow: 'hidden', background: '#000' },
+  compareImgFull: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' },
+  compareImgClip: { position: 'absolute', inset: 0, overflow: 'hidden' },
+  compareTag: { position: 'absolute', top: 8, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 10, padding: '2px 7px', borderRadius: 6 },
+  slider: { width: '100%', marginTop: 8, accentColor: COLORS.accent },
+  demoNote: { fontSize: 11.5, color: COLORS.muted, maxWidth: 380, textAlign: 'center', marginTop: 16, lineHeight: 1.5 },
+  dbErrorNote: { fontSize: 12, color: '#D9432B', fontWeight: 600, maxWidth: 380, textAlign: 'center', marginTop: 12 },
+  bottomNav: { display: 'flex', borderTop: `1px solid ${COLORS.border}`, background: COLORS.surface, padding: '8px 2px 12px' },
+  navBtn: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' },
+  navLabel: { fontSize: 9.5 },
+  chatHeader: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 14, color: COLORS.ink, padding: '2px 2px 10px' },
+  chatScroll: { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 2 },
+  chatBubbleRow: { display: 'flex' },
+  chatBubble: { maxWidth: '78%', padding: '9px 12px', borderRadius: 14, fontSize: 13, lineHeight: 1.4 },
+  chatBubbleMine: { background: COLORS.accent, color: '#fff', borderBottomRightRadius: 4 },
+  chatBubbleOther: { background: COLORS.surface, border: `1px solid ${COLORS.border}`, color: COLORS.ink, borderBottomLeftRadius: 4 },
+  chatInputRow: { display: 'flex', gap: 8, paddingTop: 10 },
+  chatInput: { flex: 1, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '10px 12px', fontSize: 13, fontFamily: "'IBM Plex Sans', sans-serif", boxSizing: 'border-box' },
+  chatSendBtn: { width: 40, background: COLORS.accent, border: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  avatar: { width: 56, height: 56, borderRadius: '50%', background: COLORS.accentSoft, color: COLORS.accentDark, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 20, margin: '0 auto 10px' },
+  profileName: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 15, color: COLORS.ink },
+  profileInput: { width: '100%', marginTop: 8, padding: 10, borderRadius: 10, border: `1px solid ${COLORS.border}`, fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 13, boxSizing: 'border-box' },
+  statRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  statValue: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16, color: COLORS.ink },
+  listBtn: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer', fontSize: 13.5, color: COLORS.ink, fontFamily: "'IBM Plex Sans', sans-serif" },
+  hint: { fontSize: 11.5, color: COLORS.muted, marginTop: 6, textAlign: 'center' },
+  balanceCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: COLORS.ink, borderRadius: 16, padding: '14px 16px', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left' },
+  balanceLabel: { fontSize: 12, color: '#D8D2C9', fontWeight: 600 },
+  balanceAmount: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 22, color: '#fff', marginTop: 2 },
+  photoGrid: { display: 'flex', gap: 8, marginBottom: 10 },
+  photoThumbWrap: { position: 'relative', width: 72, height: 72 },
+  photoThumb: { width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 },
+  photoRemove: { position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: '50%', background: COLORS.ink, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  photoAdd: { width: 72, height: 72, borderRadius: 10, border: `1.5px dashed ${COLORS.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: COLORS.accentSoft },
+  mapBox: { display: 'flex', alignItems: 'center', gap: 6, background: COLORS.bg, borderRadius: 10, padding: '8px 10px', marginBottom: 4 },
+  vehicleRow: { display: 'flex', justifyContent: 'space-between', gap: 4 },
+  vehicleBtn: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 2px', borderRadius: 10, border: `1px solid ${COLORS.border}`, background: COLORS.bg, cursor: 'pointer' },
+  vehicleBtnActive: { background: COLORS.accentSoft, border: `1px solid ${COLORS.accent}` },
+  modalOverlay: { position: 'absolute', inset: 0, background: 'rgba(42,36,32,0.45)', display: 'flex', alignItems: 'flex-end', zIndex: 10 },
+  modalSheet: { width: '100%', background: COLORS.surface, borderRadius: '20px 20px 0 0', padding: 18 },
+  methodRow: { width: '100%', display: 'flex', alignItems: 'center', padding: '10px 12px', borderRadius: 10, border: `1px solid ${COLORS.border}`, background: COLORS.bg, cursor: 'pointer', marginTop: 8 },
+  methodRowActive: { border: `1.5px solid ${COLORS.accent}`, background: COLORS.accentSoft },
+  doneCircle: { width: 52, height: 52, borderRadius: '50%', background: COLORS.success, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' },
+  routeMapSvg: { width: '100%', height: 130, display: 'block', borderRadius: 12 },
+  liveBadgeRow: { display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 },
+  liveLabel: { fontSize: 12, fontWeight: 700, color: '#2E7FD9' },
+  pulseDot: { width: 8, height: 8, borderRadius: '50%', background: '#2E7FD9', display: 'inline-block', animation: 'sm-pulse 1.4s ease-in-out infinite' },
+  mapPulseDot: {
+    position: 'absolute', left: '46%', top: '52%', width: 12, height: 12, borderRadius: '50%',
+    background: '#2E7FD9', border: '2px solid #fff', boxShadow: '0 0 0 4px rgba(46,127,217,0.25)',
+    animation: 'sm-pulse 1.4s ease-in-out infinite',
+  },
+  routeStatsRow: { display: 'flex', gap: 20, margin: '10px 0 2px' },
+  routeStatValue: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16, color: COLORS.ink },
+  geoBadge: { display: 'flex', alignItems: 'center', gap: 6, borderRadius: 8, padding: '6px 9px', fontSize: 11, fontWeight: 600, marginTop: 8 },
+};
+
+const CSS_EXTRA = `
+  .sm-spin { animation: sm-spin 0.9s linear infinite; }
+  @keyframes sm-spin { to { transform: rotate(360deg); } }
+  @keyframes sm-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: 0.6; } }
+  @keyframes sm-slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+`;
+
+const rootEl = document.getElementById('root');
+rootEl.dataset.appLoaded = '1';
+const root = ReactDOM.createRoot(rootEl);
+root.render(<App />);
+</script>
+</body>
+</html>

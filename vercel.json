@@ -1,5 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite"
+  "framework": null,
+  "installCommand": "echo skip-install",
+  "buildCommand": "mkdir -p public && cp index.html public/index.html",
+  "outputDirectory": "public"
 }

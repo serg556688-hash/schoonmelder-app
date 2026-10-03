@@ -95,6 +95,8 @@ const List<LangOption> langOptions = <LangOption>[
 /// "this site" and browser settings, which make no sense here).
 const Map<String, Map<String, String>> _nativeTexts = <String, Map<String, String>>{
   'nl': <String, String>{
+    'welcomeBack': 'Welkom terug',
+    'otherAccount': 'Ander account gebruiken',
     'geoDeniedApp':
         'De app heeft geen toegang tot je locatie. Sta locatie toe in de instellingen van je telefoon en probeer het opnieuw.',
     'geoOffApp': 'Locatie staat uit op je telefoon. Zet locatie (GPS) aan en probeer het opnieuw.',
@@ -105,6 +107,8 @@ const Map<String, Map<String, String>> _nativeTexts = <String, Map<String, Strin
         'Je wachtwoord herstel je via de link in de e-mail. Log daarna hier opnieuw in.',
   },
   'en': <String, String>{
+    'welcomeBack': 'Welcome back',
+    'otherAccount': 'Use another account',
     'geoDeniedApp':
         'The app has no access to your location. Allow location in your phone settings and try again.',
     'geoOffApp': 'Location is switched off on your phone. Turn on location (GPS) and try again.',
@@ -114,6 +118,8 @@ const Map<String, Map<String, String>> _nativeTexts = <String, Map<String, Strin
     'confirmOnWeb': 'Reset your password with the link in the e-mail, then sign in here again.',
   },
   'ru': <String, String>{
+    'welcomeBack': 'С возвращением',
+    'otherAccount': 'Войти под другим аккаунтом',
     'geoDeniedApp':
         'У приложения нет доступа к геолокации. Разрешите доступ в настройках телефона и попробуйте ещё раз.',
     'geoOffApp': 'Геолокация на телефоне выключена. Включите её (GPS) и попробуйте ещё раз.',
@@ -123,6 +129,8 @@ const Map<String, Map<String, String>> _nativeTexts = <String, Map<String, Strin
     'confirmOnWeb': 'Пароль меняется по ссылке из письма. После этого войдите здесь заново.',
   },
   'ar': <String, String>{
+    'welcomeBack': 'مرحبًا بعودتك',
+    'otherAccount': 'استخدام حساب آخر',
     'geoDeniedApp':
         'التطبيق لا يملك إذن الوصول إلى موقعك. اسمح بالموقع من إعدادات الهاتف ثم حاول مرة أخرى.',
     'geoOffApp': 'خدمة الموقع متوقفة على هاتفك. شغّل الموقع (GPS) ثم حاول مرة أخرى.',

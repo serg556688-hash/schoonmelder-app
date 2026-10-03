@@ -177,6 +177,8 @@ class _HomeShellState extends State<HomeShell> {
     ];
     final int index = items.indexWhere((_NavItem i) => i.id == _tab);
     final bool scrolls = _tab != 'chat';
+    // The report form stretches over the whole free height of the screen.
+    final bool fills = _tab == 'main' && _isReporter;
     final Widget body = _body();
     return Scaffold(
       backgroundColor: C.bg,
@@ -186,41 +188,62 @@ class _HomeShellState extends State<HomeShell> {
           children: <Widget>[
             Container(
               color: C.surface,
-              padding: const EdgeInsets.fromLTRB(14, 6, 14, 8),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+              child: Column(
                 children: <Widget>[
-                  Image.asset('assets/logo.jpeg', height: 46, fit: BoxFit.contain),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: C.accentSoft,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            _isReporter ? tr('roleReporter') : tr('roleExecutor'),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
+                  Row(
+                    children: <Widget>[
+                      Image.asset('assets/logo.jpeg', height: 52, fit: BoxFit.contain),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: C.accentSoft,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(
+                              _isReporter
+                                  ? Icons.photo_camera_outlined
+                                  : Icons.cleaning_services_outlined,
+                              size: 16,
                               color: C.accentDark,
                             ),
-                          ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                _isReporter ? tr('roleReporter') : tr('roleExecutor'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: C.accentDark,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          _isReporter ? tr('subReporter') : tr('subExecutor'),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11.5, color: C.muted),
+                      ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 12),
+                      const LangButton(),
+                    ],
                   ),
-                  const LangButton(),
+                  const SizedBox(height: 8),
+                  Text(
+                    _isReporter ? tr('subReporter') : tr('subExecutor'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13, color: C.muted),
+                  ),
                 ],
               ),
             ),
@@ -237,9 +260,19 @@ class _HomeShellState extends State<HomeShell> {
               ),
             Expanded(
               child: scrolls
-                  ? SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
-                      child: body,
+                  ? LayoutBuilder(
+                      builder: (BuildContext ctx, BoxConstraints box) {
+                        final double free = box.maxHeight - 28;
+                        return SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                          child: fills
+                              ? ConstrainedBox(
+                                  constraints: BoxConstraints(minHeight: free > 0 ? free : 0),
+                                  child: IntrinsicHeight(child: body),
+                                )
+                              : body,
+                        );
+                      },
                     )
                   : Padding(
                       padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
@@ -563,36 +596,63 @@ class _ReporterMainState extends State<ReporterMain> {
     });
   }
 
-  Widget _thumb(int index) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(end: 8),
-      child: SizedBox(
-        width: 76,
-        height: 76,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: <Widget>[
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: DataImage(_photos[index]),
+  /// One square photo place; three of them share the row evenly.
+  Widget _slot(int index) {
+    Widget inner;
+    if (index < _photos.length) {
+      inner = Stack(
+        children: <Widget>[
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: DataImage(_photos[index]),
+            ),
+          ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: GestureDetector(
+              onTap: () => setState(() => _photos.removeAt(index)),
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: const BoxDecoration(color: C.ink, shape: BoxShape.circle),
+                child: const Icon(Icons.close, size: 14, color: Colors.white),
               ),
             ),
-            Positioned(
-              top: -6,
-              right: -6,
-              child: GestureDetector(
-                onTap: () => setState(() => _photos.removeAt(index)),
-                child: Container(
-                  width: 22,
-                  height: 22,
-                  decoration: const BoxDecoration(color: C.ink, shape: BoxShape.circle),
-                  child: const Icon(Icons.close, size: 13, color: Colors.white),
-                ),
-              ),
-            ),
-          ],
+          ),
+        ],
+      );
+    } else if (index == _photos.length) {
+      inner = GestureDetector(
+        onTap: _addPhoto,
+        child: Container(
+          decoration: BoxDecoration(
+            color: C.accentSoft,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: C.accent, width: 1.5),
+          ),
+          child: const Center(
+            child: Icon(Icons.add_a_photo_outlined, color: C.accent, size: 30),
+          ),
         ),
+      );
+    } else {
+      inner = Container(
+        decoration: BoxDecoration(
+          color: C.bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: C.border),
+        ),
+        child: const Center(
+          child: Icon(Icons.image_outlined, color: C.border, size: 26),
+        ),
+      );
+    }
+    return Expanded(
+      child: Padding(
+        padding: EdgeInsetsDirectional.only(start: index == 0 ? 0 : 10),
+        child: AspectRatio(aspectRatio: 1, child: inner),
       ),
     );
   }
@@ -630,7 +690,8 @@ class _ReporterMainState extends State<ReporterMain> {
           ),
           _gap(),
         ],
-        SmCard(
+        Expanded(
+          child: SmCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
@@ -638,21 +699,7 @@ class _ReporterMainState extends State<ReporterMain> {
               _gap(10),
               Row(
                 children: <Widget>[
-                  for (int i = 0; i < _photos.length; i++) _thumb(i),
-                  if (_photos.length < 3)
-                    GestureDetector(
-                      onTap: _addPhoto,
-                      child: Container(
-                        width: 76,
-                        height: 76,
-                        decoration: BoxDecoration(
-                          color: C.accentSoft,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: C.accent, width: 1.5),
-                        ),
-                        child: const Icon(Icons.add_a_photo_outlined, color: C.accent, size: 26),
-                      ),
-                    ),
+                  for (int i = 0; i < 3; i++) _slot(i),
                 ],
               ),
               if (_error.isNotEmpty)
@@ -702,10 +749,18 @@ class _ReporterMainState extends State<ReporterMain> {
               _gap(),
               Text(tr('commentLabel'), style: subTitleStyle),
               _gap(8),
-              TextField(
-                controller: _comment,
-                maxLines: 3,
-                decoration: smInput(tr('commentPlaceholder')),
+              Expanded(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 96),
+                  child: TextField(
+                    controller: _comment,
+                    expands: true,
+                    maxLines: null,
+                    keyboardType: TextInputType.multiline,
+                    textAlignVertical: TextAlignVertical.top,
+                    decoration: smInput(tr('commentPlaceholder')),
+                  ),
+                ),
               ),
               _gap(),
               PrimaryButton(
@@ -719,6 +774,7 @@ class _ReporterMainState extends State<ReporterMain> {
                   child: Text(tr('needPhotoHint'), textAlign: TextAlign.center, style: metaStyle),
                 ),
             ],
+          ),
           ),
         ),
       ],

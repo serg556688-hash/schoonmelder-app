@@ -73,6 +73,10 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   bool _dbError = false;
   bool _fetching = false;
 
+  /// False when the app starts with a remembered account: the welcome
+  /// screen is shown first and one tap on "sign in" opens the app.
+  bool _entered = false;
+
   @override
   void initState() {
     super.initState();
@@ -114,6 +118,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     _poll?.cancel();
     _poll = null;
     setState(() {
+      _entered = false;
       _profile = null;
       _reports = <Report>[];
       _profileLoading = false;
@@ -211,7 +216,14 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final Session? session = _session;
     if (session == null) {
-      return const AuthScreen();
+      return AuthScreen(onSubmit: () => _entered = true);
+    }
+    if (!_entered) {
+      return WelcomeBackScreen(
+        email: session.user.email ?? '',
+        onContinue: () => setState(() => _entered = true),
+        onOtherAccount: _signOut,
+      );
     }
     if (_profileLoading) {
       return const Scaffold(

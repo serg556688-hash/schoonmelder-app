@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -36,24 +38,104 @@ class LangButton extends StatelessWidget {
             ),
           )
           .toList(),
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: <Color>[C.accent, C.accentDark],
-          ),
-          boxShadow: <BoxShadow>[
-            BoxShadow(color: Color(0x73FF6A1A), blurRadius: 8, offset: Offset(0, 3)),
-          ],
+      child: const SpinningGlobe(),
+    );
+  }
+}
+
+/// Round orange button with a slowly turning globe (language switch).
+class SpinningGlobe extends StatefulWidget {
+  const SpinningGlobe({super.key, this.size = 42});
+
+  final double size;
+
+  @override
+  State<SpinningGlobe> createState() => _SpinningGlobeState();
+}
+
+class _SpinningGlobeState extends State<SpinningGlobe> with SingleTickerProviderStateMixin {
+  late final AnimationController _spin = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double s = widget.size;
+    return Container(
+      width: s,
+      height: s,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[C.accent, C.accentDark],
         ),
-        child: const Icon(Icons.language, color: Colors.white, size: 20),
+        boxShadow: <BoxShadow>[
+          BoxShadow(color: Color(0x73FF6A1A), blurRadius: 8, offset: Offset(0, 3)),
+        ],
+      ),
+      child: AnimatedBuilder(
+        animation: _spin,
+        builder: (BuildContext context, Widget? _) {
+          return CustomPaint(
+            size: Size(s * 0.58, s * 0.58),
+            painter: _GlobePainter(_spin.value),
+          );
+        },
       ),
     );
   }
+}
+
+/// Draws a wire globe; the meridians slide sideways so the Earth looks like
+/// it is turning around its axis.
+class _GlobePainter extends CustomPainter {
+  _GlobePainter(this.phase);
+
+  final double phase;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset c = Offset(size.width / 2, size.height / 2);
+    final double r = size.shortestSide / 2;
+    final Paint line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = r * 0.14
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white;
+
+    canvas.drawCircle(c, r, line);
+    canvas.drawLine(Offset(c.dx - r, c.dy), Offset(c.dx + r, c.dy), line);
+    for (final double f in <double>[-0.52, 0.52]) {
+      final double half = r * math.sqrt(1 - f * f);
+      final double y = c.dy + r * f;
+      canvas.drawLine(Offset(c.dx - half, y), Offset(c.dx + half, y), line);
+    }
+
+    const int meridians = 3;
+    for (int i = 0; i < meridians; i++) {
+      final double angle = (i + phase) / meridians * math.pi - math.pi / 2;
+      final double x = r * math.sin(angle);
+      if (x.abs() < 0.5) {
+        canvas.drawLine(Offset(c.dx, c.dy - r), Offset(c.dx, c.dy + r), line);
+        continue;
+      }
+      final Rect oval = Rect.fromCenter(center: c, width: x.abs() * 2, height: r * 2);
+      canvas.drawArc(oval, x > 0 ? -math.pi / 2 : math.pi / 2, math.pi, false, line);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GlobePainter oldDelegate) => oldDelegate.phase != phase;
 }
 
 // ---------------------------------------------------------------- shell
@@ -179,7 +261,10 @@ class _RoleChoice extends StatelessWidget {
 // ---------------------------------------------------------------- login / register
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.onSubmit});
+
+  /// Called right before a sign-in or sign-up request is sent.
+  final VoidCallback? onSubmit;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -222,6 +307,7 @@ class _AuthScreenState extends State<AuthScreen> {
       _error = '';
       _info = '';
     });
+    widget.onSubmit?.call();
     try {
       if (_signup) {
         final AuthResponse res = await db.auth.signUp(
@@ -436,6 +522,77 @@ class _AuthScreenState extends State<AuthScreen> {
             tr('continueApple'),
             const Icon(Icons.apple, size: 20, color: Colors.black),
             () => _oauth('Apple'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------- welcome back
+
+/// Shown when the app is opened while the account is still remembered:
+/// the details are already filled in, one tap on the button goes inside.
+class WelcomeBackScreen extends StatelessWidget {
+  const WelcomeBackScreen({
+    super.key,
+    required this.email,
+    required this.onContinue,
+    required this.onOtherAccount,
+  });
+
+  final String email;
+  final VoidCallback onContinue;
+  final VoidCallback onOtherAccount;
+
+  Widget _filled(String text, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: C.border),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, size: 18, color: C.muted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 14.5, color: C.ink),
+            ),
+          ),
+          const Icon(Icons.check_circle, size: 18, color: C.success),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthShell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(tr('welcomeBack'), textAlign: TextAlign.center, style: titleStyle),
+          const SizedBox(height: 14),
+          _filled(email, Icons.mail_outline),
+          const SizedBox(height: 10),
+          _filled('\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022', Icons.lock_outline),
+          const SizedBox(height: 16),
+          PrimaryButton(label: tr('signInBtn'), onTap: onContinue),
+          Align(
+            alignment: Alignment.center,
+            child: TextButton(
+              onPressed: onOtherAccount,
+              child: Text(
+                tr('otherAccount'),
+                style: const TextStyle(color: C.accentDark, fontSize: 13),
+              ),
+            ),
           ),
         ],
       ),

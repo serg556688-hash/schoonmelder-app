@@ -1,0 +1,66 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [flutter-native]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flutter_app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android project
+        run: |
+          flutter create --platforms=android --org nl.schoonmelder --project-name schoonmelder .
+          rm -rf test
+          python3 tool/patch_android.py
+          mkdir -p ~/.android
+          cp tool/debug.keystore ~/.android/debug.keystore
+
+      - name: Packages
+        run: flutter pub get
+
+      - name: App icon
+        continue-on-error: true
+        run: dart run flutter_launcher_icons
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Build APK
+        run: |
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk schoonmelder.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: schoonmelder-apk
+          path: flutter_app/schoonmelder.apk
+
+      - name: Publish download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: Schoonmelder Android (test)
+          body: Testversie van de native Android-app. Download schoonmelder.apk en installeer.
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          files: flutter_app/schoonmelder.apk

@@ -8,12 +8,17 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: app-build
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: flutter_app
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: flutter_app
     steps:
       - uses: actions/checkout@v4
 
@@ -60,7 +65,50 @@ jobs:
         with:
           tag_name: apk-latest
           name: Schoonmelder Android (test)
-          body: Testversie van de native Android-app. Download schoonmelder.apk en installeer.
+          body: Testversie van de native app. Android - schoonmelder.apk. iPhone - schoonmelder.ipa (installeren met Sideloadly).
           target_commitish: ${{ github.sha }}
           prerelease: true
           files: flutter_app/schoonmelder.apk
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate iOS project
+        run: |
+          flutter create --platforms=ios --org nl.schoonmelder --project-name schoonmelder .
+          rm -rf test
+          python3 tool/patch_ios.py
+
+      - name: Packages
+        run: flutter pub get
+
+      - name: App icon
+        continue-on-error: true
+        run: dart run flutter_launcher_icons
+
+      - name: Build iOS (unsigned)
+        run: |
+          flutter build ios --release --no-codesign
+          rm -rf Payload && mkdir Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qry schoonmelder.ipa Payload
+          ls -la schoonmelder.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: schoonmelder-ipa
+          path: flutter_app/schoonmelder.ipa
+
+      - name: Publish download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          prerelease: true
+          files: flutter_app/schoonmelder.ipa

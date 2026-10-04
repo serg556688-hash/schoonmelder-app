@@ -172,7 +172,20 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     if (me != null) full['reporter_id'] = me;
     setState(() => _reports = <Report>[Report(full), ..._reports]);
     try {
-      await db.from('reports').insert(full);
+      try {
+        await db.from('reports').insert(full);
+      } on PostgrestException catch (e) {
+        // The accuracy columns may not exist in the database yet: the report
+        // itself must still be saved.
+        final String why = '${e.code} ${e.message}';
+        if (!why.contains('accuracy_m') && !why.contains('pin_manual') && e.code != 'PGRST204') {
+          rethrow;
+        }
+        final Map<String, dynamic> basic = Map<String, dynamic>.from(full)
+          ..remove('accuracy_m')
+          ..remove('pin_manual');
+        await db.from('reports').insert(basic);
+      }
       if (mounted) setState(() => _dbError = false);
     } catch (_) {
       if (mounted) setState(() => _dbError = true);

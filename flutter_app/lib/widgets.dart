@@ -353,8 +353,11 @@ class SmMap extends StatefulWidget {
     this.routeTo,
     this.profile = 'bike',
     this.onRouteKm,
+    this.accuracyM,
   });
 
+  /// Draws the GPS error circle (in metres) around the first point.
+  final double? accuracyM;
   final List<MapPoint> points;
   final double height;
   final LatLng? routeFrom;
@@ -383,7 +386,11 @@ class _SmMapState extends State<SmMap> {
   void didUpdateWidget(covariant SmMap oldWidget) {
     super.didUpdateWidget(oldWidget);
     _loadRoute();
-    if (!_userMoved && widget.points.length != oldWidget.points.length) {
+    final bool moved = widget.points.length == 1 &&
+        oldWidget.points.length == 1 &&
+        widget.points.first.at != oldWidget.points.first.at;
+    if (moved) _userMoved = false;
+    if (!_userMoved && (moved || widget.points.length != oldWidget.points.length)) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _fit());
     }
   }
@@ -521,6 +528,19 @@ class _SmMapState extends State<SmMap> {
                       ),
                     ],
                   ),
+                if (widget.accuracyM != null && widget.points.isNotEmpty)
+                  CircleLayer(
+                    circles: <CircleMarker>[
+                      CircleMarker(
+                        point: widget.points.first.at,
+                        radius: widget.accuracyM!.clamp(3, 300).toDouble(),
+                        useRadiusInMeter: true,
+                        color: const Color(0x332E7FD9),
+                        borderColor: Colors.white,
+                        borderStrokeWidth: 1.5,
+                      ),
+                    ],
+                  ),
                 MarkerLayer(
                   markers: widget.points
                       .map(
@@ -574,15 +594,265 @@ class _SmMapState extends State<SmMap> {
   }
 }
 
+// ---------------------------------------------------------------- pin picker
+
+/// Full-screen map where the reporter slides the map under a fixed pin to put
+/// the point exactly on the litter. Returns the chosen point, or null.
+class PinPickerPage extends StatefulWidget {
+  const PinPickerPage({super.key, required this.measured, required this.start, this.accuracyM});
+
+  /// Where the GPS says the reporter is standing.
+  final LatLng measured;
+
+  /// Where the pin starts (the measured spot, or an earlier manual choice).
+  final LatLng start;
+  final double? accuracyM;
+
+  @override
+  State<PinPickerPage> createState() => _PinPickerPageState();
+}
+
+class _PinPickerPageState extends State<PinPickerPage> {
+  final MapController _controller = MapController();
+  late LatLng _at = widget.start;
+  String _address = '';
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _lookup();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  int get _meters => ((haversineKm(widget.measured, _at) ?? 0) * 1000).round();
+
+  void _lookup() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 600), () async {
+      final LatLng asked = _at;
+      final String a = await reverseGeocode(asked);
+      if (!mounted || asked != _at) return;
+      setState(() => _address = a);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool tooFar = _meters > pinMaxMoveM;
+    final String place = _address.isNotEmpty
+        ? _address
+        : '${_at.latitude.toStringAsFixed(5)}, ${_at.longitude.toStringAsFixed(5)}';
+    return Directionality(
+      textDirection: I18n.isRtl ? TextDirection.rtl : TextDirection.ltr,
+      child: Scaffold(
+        backgroundColor: C.bg,
+        appBar: AppBar(
+          backgroundColor: C.surface,
+          foregroundColor: C.ink,
+          elevation: 0,
+          title: Text(
+            tr('pinTitle'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: C.ink),
+          ),
+        ),
+        body: SafeArea(
+          top: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Expanded(
+                child: Stack(
+                  children: <Widget>[
+                    FlutterMap(
+                      mapController: _controller,
+                      options: MapOptions(
+                        initialCenter: widget.start,
+                        initialZoom: 19,
+                        minZoom: 15,
+                        maxZoom: 21,
+                        onPositionChanged: (MapCamera camera, bool hasGesture) {
+                          if (camera.center == _at) return;
+                          setState(() {
+                            _at = camera.center;
+                            _address = '';
+                          });
+                          _lookup();
+                        },
+                      ),
+                      children: <Widget>[
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'nl.schoonmelder.schoonmelder',
+                          maxNativeZoom: 19,
+                        ),
+                        TileLayer(
+                          urlTemplate:
+                              'https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg',
+                          userAgentPackageName: 'nl.schoonmelder.schoonmelder',
+                          maxNativeZoom: 19,
+                          errorTileCallback: (TileImage tile, Object error, StackTrace? stack) {},
+                        ),
+                        CircleLayer(
+                          circles: <CircleMarker>[
+                            if (widget.accuracyM != null)
+                              CircleMarker(
+                                point: widget.measured,
+                                radius: widget.accuracyM!.clamp(3, 300).toDouble(),
+                                useRadiusInMeter: true,
+                                color: const Color(0x332E7FD9),
+                                borderColor: Colors.white,
+                                borderStrokeWidth: 1.5,
+                              ),
+                          ],
+                        ),
+                        MarkerLayer(
+                          markers: <Marker>[
+                            Marker(
+                              point: widget.measured,
+                              width: 22,
+                              height: 22,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: C.blue,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 3),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    // The pin stays in the middle; its tip marks the chosen spot.
+                    const IgnorePointer(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: 44),
+                          child: Icon(
+                            Icons.location_on,
+                            size: 48,
+                            color: C.accent,
+                            shadows: <Shadow>[Shadow(color: Colors.black54, blurRadius: 6)],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Material(
+                        color: Colors.white,
+                        shape: const CircleBorder(),
+                        elevation: 2,
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () {
+                            try {
+                              _controller.move(widget.measured, 19);
+                            } catch (_) {}
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(9),
+                            child: Tooltip(
+                              message: tr('pinReset'),
+                              child: const Icon(Icons.my_location, size: 20, color: C.blue),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 6,
+                      bottom: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        color: Colors.white70,
+                        child: const Text(
+                          '© OpenStreetMap · Luchtfoto © PDOK',
+                          style: TextStyle(fontSize: 9, color: Colors.black87),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                color: C.surface,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Text(
+                      tooFar ? tr('pinTooFar').replaceAll('{n}', '$pinMaxMoveM') : tr('pinHint'),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: tooFar ? C.danger : C.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: <Widget>[
+                        const Icon(Icons.location_on, size: 17, color: C.accent),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            place,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 13.5, color: C.ink, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    PrimaryButton(
+                      label: tr('pinDone'),
+                      onTap: tooFar ? null : () => Navigator.of(context).pop(_at),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ---------------------------------------------------------------- address line
 
 /// Street address of a point; tap to open the map and a route button.
 class PlaceLine extends StatefulWidget {
-  const PlaceLine({super.key, required this.coords, this.open = false, this.noMap = false});
+  const PlaceLine({
+    super.key,
+    required this.coords,
+    this.open = false,
+    this.noMap = false,
+    this.accuracyM,
+    this.manual = false,
+    this.onAdjust,
+  });
 
   final LatLng coords;
   final bool open;
   final bool noMap;
+
+  /// GPS error in metres, shown under the address.
+  final double? accuracyM;
+
+  /// The pin was placed by hand, so the GPS error no longer applies.
+  final bool manual;
+
+  /// When set, the route button is replaced by "move the pin".
+  final VoidCallback? onAdjust;
 
   @override
   State<PlaceLine> createState() => _PlaceLineState();
@@ -613,6 +883,24 @@ class _PlaceLineState extends State<PlaceLine> {
     final String a = await reverseGeocode(asked);
     if (!mounted || asked != widget.coords) return;
     setState(() => _address = a);
+  }
+
+  Widget _accuracyLine() {
+    final double acc = widget.accuracyM ?? 0;
+    final bool weak = !widget.manual && acc > 25;
+    final String text = widget.manual
+        ? tr('pinManualLine')
+        : tr(weak ? 'accuracyWeak' : 'accuracyLine').replaceAll('{n}', acc.round().toString());
+    final Color color = widget.manual ? C.muted : (weak ? C.danger : C.success);
+    return Row(
+      children: <Widget>[
+        Icon(widget.manual ? Icons.touch_app_outlined : Icons.gps_fixed, size: 13, color: color),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ),
+      ],
+    );
   }
 
   @override
@@ -653,15 +941,31 @@ class _PlaceLineState extends State<PlaceLine> {
             ),
           ),
         ),
+        if (widget.manual || widget.accuracyM != null)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 10, top: 5),
+            child: _accuracyLine(),
+          ),
         if (_open && !widget.noMap) ...<Widget>[
           const SizedBox(height: 8),
-          SmMap(height: 220, points: <MapPoint>[MapPoint('trash', c)]),
-          const SizedBox(height: 8),
-          SecondaryButton(
-            label: tr('route'),
-            icon: Icons.navigation_outlined,
-            onTap: () => openGoogleMaps(c),
+          SmMap(
+            height: widget.onAdjust != null ? 150 : 220,
+            points: <MapPoint>[MapPoint('trash', c)],
+            accuracyM: widget.manual ? null : widget.accuracyM,
           ),
+          const SizedBox(height: 8),
+          if (widget.onAdjust != null)
+            SecondaryButton(
+              label: tr('adjustPin'),
+              icon: Icons.edit_location_alt_outlined,
+              onTap: widget.onAdjust,
+            )
+          else
+            SecondaryButton(
+              label: tr('route'),
+              icon: Icons.navigation_outlined,
+              onTap: () => openGoogleMaps(c),
+            ),
         ],
       ],
     );
@@ -798,7 +1102,9 @@ class ReportCard extends StatelessWidget {
       ok = m <= geoVerifyThresholdM;
       text = ok
           ? tr('geoVerified').replaceAll('{n}', m.toStringAsFixed(0))
-          : tr('geoMismatch').replaceAll('{n}', (m / 1000).toStringAsFixed(1));
+          : (m < 1000
+              ? tr('geoMismatchM').replaceAll('{n}', m.toStringAsFixed(0))
+              : tr('geoMismatch').replaceAll('{n}', (m / 1000).toStringAsFixed(1)));
     } else {
       text = tr('geoUnavailable');
     }
@@ -898,6 +1204,8 @@ class ReportCard extends StatelessWidget {
             PlaceLine(
               coords: report.coords!,
               noMap: hideLive || report.status == Status.inProgress,
+              accuracyM: report.accuracyM,
+              manual: report.pinManual,
             ),
           ...children,
         ],

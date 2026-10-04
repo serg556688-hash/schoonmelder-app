@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:geolocator/geolocator.dart';
@@ -21,7 +22,14 @@ SupabaseClient get db => Supabase.instance.client;
 
 const int reporterCentReward = 5;
 const int executorCentReward = 50;
-const int geoVerifyThresholdM = 150;
+/// The "after" photo is only flagged (never blocked) when it is further away than this.
+const int geoVerifyThresholdM = 50;
+
+/// A position this precise (or better) is accepted straight away.
+const double geoGoodAccuracyM = 10;
+
+/// The reporter may move the pin at most this far from the measured position.
+const int pinMaxMoveM = 150;
 const int homeRadiusM = 2000;
 
 class Status {
@@ -95,6 +103,30 @@ const List<LangOption> langOptions = <LangOption>[
 /// "this site" and browser settings, which make no sense here).
 const Map<String, Map<String, String>> _nativeTexts = <String, Map<String, String>>{
   'nl': <String, String>{
+    'geoApprox':
+        'De app krijgt alleen je locatie bij benadering. Zet "Exacte locatie" aan in de instellingen, anders ligt het punt honderden meters ernaast.',
+    'accuracyLine':
+        'Nauwkeurigheid: ±{n} m',
+    'accuracyWeak':
+        'Nauwkeurigheid: ±{n} m — controleer het punt op de kaart',
+    'pinManualLine':
+        'Punt met de hand op de kaart gezet',
+    'adjustPin':
+        'Punt klopt niet? Verplaats het op de kaart',
+    'pinTitle':
+        'Waar ligt het afval?',
+    'pinHint':
+        'Schuif de kaart tot de speld precies op het afval staat.',
+    'pinTooFar':
+        'Het punt ligt te ver van waar je staat (max. {n} m).',
+    'pinDone':
+        'Klaar',
+    'pinReset':
+        'Terug naar mijn locatie',
+    'geoMismatchM':
+        'Foto is {n} m van de melding gemaakt — handmatig controleren',
+    'commentPlaceholder':
+        'Bijv. "achter de containers bij ingang 3" (optioneel)',
     'welcomeBack': 'Welkom terug',
     'otherAccount': 'Ander account gebruiken',
     'geoDeniedApp':
@@ -107,6 +139,30 @@ const Map<String, Map<String, String>> _nativeTexts = <String, Map<String, Strin
         'Je wachtwoord herstel je via de link in de e-mail. Log daarna hier opnieuw in.',
   },
   'en': <String, String>{
+    'geoApprox':
+        'The app only gets your approximate location. Turn on "Precise location" in settings, otherwise the point is hundreds of metres off.',
+    'accuracyLine':
+        'Accuracy: ±{n} m',
+    'accuracyWeak':
+        'Accuracy: ±{n} m — check the point on the map',
+    'pinManualLine':
+        'Point placed on the map by hand',
+    'adjustPin':
+        'Point not right? Move it on the map',
+    'pinTitle':
+        'Where is the litter?',
+    'pinHint':
+        'Move the map until the pin is exactly on the litter.',
+    'pinTooFar':
+        'The point is too far from where you are (max. {n} m).',
+    'pinDone':
+        'Done',
+    'pinReset':
+        'Back to my location',
+    'geoMismatchM':
+        'Photo was taken {n} m from the report — check manually',
+    'commentPlaceholder':
+        'E.g. "behind the bins at entrance 3" (optional)',
     'welcomeBack': 'Welcome back',
     'otherAccount': 'Use another account',
     'geoDeniedApp':
@@ -118,6 +174,30 @@ const Map<String, Map<String, String>> _nativeTexts = <String, Map<String, Strin
     'confirmOnWeb': 'Reset your password with the link in the e-mail, then sign in here again.',
   },
   'ru': <String, String>{
+    'geoApprox':
+        'Приложение получает только приблизительное местоположение. Включите «Точное местоположение» в настройках, иначе точка будет в сотнях метров от вас.',
+    'accuracyLine':
+        'Точность: ±{n} м',
+    'accuracyWeak':
+        'Точность: ±{n} м — проверьте точку на карте',
+    'pinManualLine':
+        'Точка поставлена на карте вручную',
+    'adjustPin':
+        'Точка не там? Подвиньте её на карте',
+    'pinTitle':
+        'Где лежит мусор?',
+    'pinHint':
+        'Двигайте карту, пока булавка не встанет точно на мусор.',
+    'pinTooFar':
+        'Точка слишком далеко от вас (не дальше {n} м).',
+    'pinDone':
+        'Готово',
+    'pinReset':
+        'Вернуть к моему месту',
+    'geoMismatchM':
+        'Фото сделано в {n} м от заявки — проверьте вручную',
+    'commentPlaceholder':
+        'Например, «за контейнерами у подъезда 3» (необязательно)',
     'welcomeBack': 'С возвращением',
     'otherAccount': 'Войти под другим аккаунтом',
     'geoDeniedApp':
@@ -129,6 +209,30 @@ const Map<String, Map<String, String>> _nativeTexts = <String, Map<String, Strin
     'confirmOnWeb': 'Пароль меняется по ссылке из письма. После этого войдите здесь заново.',
   },
   'ar': <String, String>{
+    'geoApprox':
+        'التطبيق يحصل على موقعك التقريبي فقط. فعّل «الموقع الدقيق» من الإعدادات، وإلا ستكون النقطة بعيدة بمئات الأمتار.',
+    'accuracyLine':
+        'الدقة: ±{n} م',
+    'accuracyWeak':
+        'الدقة: ±{n} م — تحقق من النقطة على الخريطة',
+    'pinManualLine':
+        'تم وضع النقطة على الخريطة يدويًا',
+    'adjustPin':
+        'النقطة غير صحيحة؟ حرّكها على الخريطة',
+    'pinTitle':
+        'أين توجد القمامة؟',
+    'pinHint':
+        'حرّك الخريطة حتى يقف الدبوس على القمامة تمامًا.',
+    'pinTooFar':
+        'النقطة بعيدة جدًا عن مكانك (بحد أقصى {n} م).',
+    'pinDone':
+        'تم',
+    'pinReset':
+        'العودة إلى موقعي',
+    'geoMismatchM':
+        'التُقطت الصورة على بعد {n} م من البلاغ — تحقق يدويًا',
+    'commentPlaceholder':
+        'مثال: «خلف الحاويات عند المدخل 3» (اختياري)',
     'welcomeBack': 'مرحبًا بعودتك',
     'otherAccount': 'استخدام حساب آخر',
     'geoDeniedApp':
@@ -232,6 +336,12 @@ class Report {
   }
 
   LatLng? get coords => _asPoint(row['lat'], row['lng']);
+
+  /// GPS error of the reported spot in metres (null for old reports).
+  double? get accuracyM => _asDouble(row['accuracy_m']);
+
+  /// True when the reporter placed the pin on the map by hand.
+  bool get pinManual => row['pin_manual'] == true;
   String get comment => (row['comment'] ?? '').toString();
   int get createdAt => _asInt(row['created_at']) ?? 0;
   String get status => (row['status'] ?? Status.fresh).toString();
@@ -366,6 +476,76 @@ String toDataUrl(Uint8List bytes) => 'data:image/jpeg;base64,${base64Encode(byte
 
 // ---------------------------------------------------------------- location
 
+/// One measured position with its error radius in metres.
+class GeoFix {
+  const GeoFix(this.at, this.accuracy, this.atMs);
+
+  factory GeoFix.of(Position p) => GeoFix(
+        LatLng(p.latitude, p.longitude),
+        p.accuracy > 0 ? p.accuracy : 999,
+        p.timestamp.millisecondsSinceEpoch,
+      );
+
+  final LatLng at;
+  final double accuracy;
+  final int atMs;
+}
+
+/// Keeps the GPS running for a short while and remembers the most precise
+/// recent position. Start it before the camera opens, so the GPS is warm by
+/// the time the photo is taken.
+class GeoSampler {
+  StreamSubscription<Position>? _sub;
+  GeoFix? best;
+  VoidCallback? onChange;
+
+  bool get running => _sub != null;
+
+  Future<bool> start() async {
+    if (_sub != null) return true;
+    if (!await Geo._ensurePermission()) return false;
+    try {
+      _sub = Geolocator.getPositionStream(locationSettings: Geo._precise).listen(
+        _take,
+        onError: (Object _) {},
+      );
+      return true;
+    } catch (_) {
+      Geo.lastError = 'noLoc';
+      return false;
+    }
+  }
+
+  void _take(Position p) {
+    final GeoFix fix = GeoFix.of(p);
+    final GeoFix? old = best;
+    // A newer fix wins when it is at least as precise, or when the old one is stale.
+    if (old == null || fix.accuracy <= old.accuracy || fix.atMs - old.atMs > 10000) {
+      best = fix;
+      onChange?.call();
+    }
+  }
+
+  /// Waits until the position is precise enough, at most [maxWait].
+  Future<GeoFix?> settle({
+    double target = geoGoodAccuracyM,
+    Duration maxWait = const Duration(seconds: 12),
+  }) async {
+    final int until = nowMs() + maxWait.inMilliseconds;
+    while (nowMs() < until) {
+      final GeoFix? b = best;
+      if (b != null && b.accuracy <= target && nowMs() - b.atMs < 15000) return b;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    }
+    return best;
+  }
+
+  void stop() {
+    _sub?.cancel();
+    _sub = null;
+  }
+}
+
 class Geo {
   /// Last problem, as a translation key: geoOffApp, geoDeniedApp or noLoc.
   static String lastError = 'noLoc';
@@ -394,38 +574,73 @@ class Geo {
     }
   }
 
-  static Future<LatLng?> getLocation() async {
-    if (!await _ensurePermission()) return null;
+  /// True when the user only allowed an approximate ("not precise") location.
+  static Future<bool> isApproximate() async {
     try {
-      final Position p = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 15),
-        ),
-      );
-      _last = LatLng(p.latitude, p.longitude);
-      _lastAt = nowMs();
-      return _last;
+      return await Geolocator.getLocationAccuracy() == LocationAccuracyStatus.reduced;
     } catch (_) {
-      // Fall back to a recent fix (max 1 minute old), like the web app does.
-      if (_last != null && nowMs() - _lastAt < 60000) return _last;
-      try {
-        final Position? known = await Geolocator.getLastKnownPosition();
-        if (known != null &&
-            DateTime.now().difference(known.timestamp).inSeconds.abs() < 60) {
-          return LatLng(known.latitude, known.longitude);
-        }
-      } catch (_) {}
-      lastError = 'noLoc';
-      return null;
+      return false;
     }
+  }
+
+  /// Satellite (GPS) precision with an update every second.
+  static LocationSettings get _precise {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.best,
+        distanceFilter: 0,
+        intervalDuration: const Duration(seconds: 1),
+      );
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.best,
+        distanceFilter: 0,
+        pauseLocationUpdatesAutomatically: false,
+        allowBackgroundLocationUpdates: false,
+      );
+    }
+    return const LocationSettings(accuracy: LocationAccuracy.best, distanceFilter: 0);
+  }
+
+  /// Best position the phone can give within [maxWait]: listens to the GPS
+  /// instead of taking the first (often rough, network based) answer.
+  static Future<GeoFix?> getFix({
+    double target = geoGoodAccuracyM,
+    Duration maxWait = const Duration(seconds: 12),
+  }) async {
+    final GeoSampler sampler = GeoSampler();
+    if (!await sampler.start()) return null;
+    final GeoFix? fix = await sampler.settle(target: target, maxWait: maxWait);
+    sampler.stop();
+    if (fix != null) return fix;
+    // Fall back to a recent fix (max 1 minute old), like the web app does.
+    try {
+      final Position? known = await Geolocator.getLastKnownPosition();
+      if (known != null && DateTime.now().difference(known.timestamp).inSeconds.abs() < 60) {
+        return GeoFix.of(known);
+      }
+    } catch (_) {}
+    lastError = 'noLoc';
+    return null;
+  }
+
+  static Future<LatLng?> getLocation() async {
+    final GeoFix? fix = await getFix(target: 20, maxWait: const Duration(seconds: 8));
+    if (fix != null) {
+      _last = fix.at;
+      _lastAt = nowMs();
+      return fix.at;
+    }
+    if (lastError == 'noLoc' && _last != null && nowMs() - _lastAt < 60000) return _last;
+    return null;
   }
 
   static Future<Stream<Position>?> watch() async {
     if (!await _ensurePermission()) return null;
     return Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
+        accuracy: LocationAccuracy.best,
         distanceFilter: 5,
       ),
     );

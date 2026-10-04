@@ -510,7 +510,14 @@ class ReporterMain extends StatefulWidget {
 class _ReporterMainState extends State<ReporterMain> {
   final TextEditingController _comment = TextEditingController();
   final List<String> _photos = <String>[];
+  final GeoSampler _gps = GeoSampler();
+
+  /// Where the GPS measured the reporter while the photo was taken.
+  GeoFix? _fix;
+
+  /// The point that goes into the report (the measured spot, or the moved pin).
   LatLng? _coords;
+  bool _manual = false;
   bool _locating = false;
   bool _sending = false;
   bool _sent = false;
@@ -519,43 +526,85 @@ class _ReporterMainState extends State<ReporterMain> {
 
   @override
   void dispose() {
+    _gps.stop();
     _comment.dispose();
     super.dispose();
   }
 
+  /// Takes the most precise position of the last seconds. The GPS is started
+  /// before the camera opens, so it has had time to warm up.
   Future<LatLng?> _locate() async {
     setState(() {
       _locating = true;
       _error = '';
       _geoProblem = false;
     });
-    final LatLng? pos = await Geo.getLocation();
-    if (!mounted) return pos;
+    final GeoFix? fix = await _gps.start() ? await _gps.settle() : null;
+    _gps.stop();
+    final bool approx = fix != null && fix.accuracy > 100 && await Geo.isApproximate();
+    if (!mounted) return fix?.at;
     setState(() {
-      _coords = pos;
       _locating = false;
-      if (pos == null) {
+      if (fix == null) {
         _error = tr(Geo.lastError);
         _geoProblem = Geo.lastError != 'noLoc';
+      } else {
+        _fix = fix;
+        _coords = fix.at;
+        _manual = false;
+        if (approx) {
+          Geo.lastError = 'geoDeniedApp';
+          _error = tr('geoApprox');
+          _geoProblem = true;
+        }
       }
     });
-    return pos;
+    return fix?.at;
   }
 
   Future<void> _addPhoto() async {
     setState(() => _error = '');
+    final bool needPlace = _coords == null && !_locating;
+    // Warm the GPS up while the camera is open: the place is fixed at the
+    // moment of the photo, not when the report is sent.
+    if (needPlace) unawaited(_gps.start());
     try {
       final String? photo = await takePhoto();
-      if (photo == null || !mounted) return;
+      if (photo == null || !mounted) {
+        if (needPlace) _gps.stop();
+        return;
+      }
       setState(() {
         if (_photos.length < 3) _photos.add(photo);
       });
-      if (_coords == null && !_locating) {
-        await _locate();
-      }
+      if (needPlace) await _locate();
     } catch (_) {
+      if (needPlace) _gps.stop();
       if (mounted) setState(() => _error = tr('photoErrorText'));
     }
+  }
+
+  /// Opens the map so the reporter can put the pin exactly on the litter.
+  Future<void> _adjustPin() async {
+    final GeoFix? fix = _fix;
+    final LatLng? at = _coords;
+    if (fix == null || at == null) return;
+    final LatLng? picked = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute<LatLng>(
+        builder: (BuildContext ctx) => PinPickerPage(
+          measured: fix.at,
+          start: at,
+          accuracyM: fix.accuracy,
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    final double movedM = (haversineKm(at, picked) ?? 0) * 1000;
+    if (movedM < 1) return;
+    setState(() {
+      _coords = picked;
+      _manual = true;
+    });
   }
 
   Future<void> _submit() async {
@@ -580,6 +629,8 @@ class _ReporterMainState extends State<ReporterMain> {
       'photos': List<String>.from(_photos),
       'lat': pos.latitude,
       'lng': pos.longitude,
+      if (_fix != null) 'accuracy_m': _fix!.accuracy.round(),
+      'pin_manual': _manual,
       'comment': _comment.text.trim(),
       'created_at': nowMs(),
       'status': Status.fresh,
@@ -589,6 +640,8 @@ class _ReporterMainState extends State<ReporterMain> {
       _photos.clear();
       _comment.clear();
       _coords = null;
+      _fix = null;
+      _manual = false;
       _sending = false;
       _sent = true;
     });
@@ -722,7 +775,13 @@ class _ReporterMainState extends State<ReporterMain> {
                   ),
                 ),
               if (_coords != null && !_locating)
-                PlaceLine(coords: _coords!, open: true)
+                PlaceLine(
+                  coords: _coords!,
+                  open: true,
+                  accuracyM: _fix?.accuracy,
+                  manual: _manual,
+                  onAdjust: _adjustPin,
+                )
               else
                 InkWell(
                   onTap: _locating ? null : _locate,
@@ -930,15 +989,12 @@ class _ExecutorMainState extends State<ExecutorMain> {
       await showInfo(context, tr(Geo.lastError), settings: Geo.lastError != 'noLoc');
       return;
     }
+    // The "after" photo is never refused because of GPS: a spot that does not
+    // match is only flagged on the report, so the reporter can check it.
     final LatLng? target = r.coords;
     if (target != null) {
       final int meters = ((haversineKm(target, pos) ?? 0) * 1000).round();
-      if (meters > geoVerifyThresholdM) {
-        smEvent(r.id, 'far:$meters');
-        setState(() => _busyId = '');
-        await showInfo(context, tr('tooFar').replaceAll('{n}', '$meters'));
-        return;
-      }
+      if (meters > geoVerifyThresholdM) smEvent(r.id, 'far:$meters');
     }
     await widget.patchReport(r.id, <String, dynamic>{
       'status': Status.awaiting,

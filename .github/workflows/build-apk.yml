@@ -91,7 +91,9 @@ jobs:
 
       - name: App icon
         continue-on-error: true
-        run: dart run flutter_launcher_icons
+        run: |
+          sed -i '' 's/android: true/android: false/' pubspec.yaml
+          dart run flutter_launcher_icons
 
       - name: Build iOS (unsigned)
         run: |

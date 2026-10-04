@@ -193,12 +193,15 @@ class _HomeShellState extends State<HomeShell> {
                 children: <Widget>[
                   Row(
                     children: <Widget>[
-                      Image.asset('assets/logo.jpeg', height: 52, fit: BoxFit.contain),
-                      const SizedBox(width: 10),
                       Expanded(
-                        child: Align(
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: Container(
+                        child: Image.asset(
+                          'assets/logo.jpeg',
+                          height: 70,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: C.accentSoft,
@@ -228,8 +231,6 @@ class _HomeShellState extends State<HomeShell> {
                               ),
                             ),
                           ],
-                        ),
-                      ),
                         ),
                       ),
                       const SizedBox(width: 12),

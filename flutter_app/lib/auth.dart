@@ -1,9 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data.dart';
+import 'globe.dart';
 import 'widgets.dart';
 
 // ---------------------------------------------------------------- language button
@@ -41,101 +40,6 @@ class LangButton extends StatelessWidget {
       child: const SpinningGlobe(),
     );
   }
-}
-
-/// Round orange button with a slowly turning globe (language switch).
-class SpinningGlobe extends StatefulWidget {
-  const SpinningGlobe({super.key, this.size = 42});
-
-  final double size;
-
-  @override
-  State<SpinningGlobe> createState() => _SpinningGlobeState();
-}
-
-class _SpinningGlobeState extends State<SpinningGlobe> with SingleTickerProviderStateMixin {
-  late final AnimationController _spin = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1800),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _spin.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final double s = widget.size;
-    return Container(
-      width: s,
-      height: s,
-      alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[C.accent, C.accentDark],
-        ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(color: Color(0x73FF6A1A), blurRadius: 8, offset: Offset(0, 3)),
-        ],
-      ),
-      child: AnimatedBuilder(
-        animation: _spin,
-        builder: (BuildContext context, Widget? _) {
-          return CustomPaint(
-            size: Size(s * 0.58, s * 0.58),
-            painter: _GlobePainter(_spin.value),
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// Draws a wire globe; the meridians slide sideways so the Earth looks like
-/// it is turning around its axis.
-class _GlobePainter extends CustomPainter {
-  _GlobePainter(this.phase);
-
-  final double phase;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Offset c = Offset(size.width / 2, size.height / 2);
-    final double r = size.shortestSide / 2;
-    final Paint line = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = r * 0.14
-      ..strokeCap = StrokeCap.round
-      ..color = Colors.white;
-
-    canvas.drawCircle(c, r, line);
-    canvas.drawLine(Offset(c.dx - r, c.dy), Offset(c.dx + r, c.dy), line);
-    for (final double f in <double>[-0.52, 0.52]) {
-      final double half = r * math.sqrt(1 - f * f);
-      final double y = c.dy + r * f;
-      canvas.drawLine(Offset(c.dx - half, y), Offset(c.dx + half, y), line);
-    }
-
-    const int meridians = 3;
-    for (int i = 0; i < meridians; i++) {
-      final double angle = (i + phase) / meridians * math.pi - math.pi / 2;
-      final double x = r * math.sin(angle);
-      if (x.abs() < 0.5) {
-        canvas.drawLine(Offset(c.dx, c.dy - r), Offset(c.dx, c.dy + r), line);
-        continue;
-      }
-      final Rect oval = Rect.fromCenter(center: c, width: x.abs() * 2, height: r * 2);
-      canvas.drawArc(oval, x > 0 ? -math.pi / 2 : math.pi / 2, math.pi, false, line);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _GlobePainter oldDelegate) => oldDelegate.phase != phase;
 }
 
 // ---------------------------------------------------------------- shell

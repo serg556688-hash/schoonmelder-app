@@ -373,7 +373,7 @@ class Profile {
   String get role => (row['role'] ?? 'reporter').toString();
   String get name => (row['name'] ?? '').toString();
   String get phone => (row['phone'] ?? '').toString();
-  String get vehicle => (row['vehicle'] ?? 'foot').toString();
+  String get vehicle => row['vehicle']?.toString() == 'car' ? 'car' : 'scooter';
   int get withdrawnCents => _asInt(row['withdrawn_cents']) ?? 0;
 
   Profile patched(Map<String, dynamic> patch) {
@@ -392,9 +392,6 @@ class Vehicle {
 }
 
 const List<Vehicle> vehicles = <Vehicle>[
-  Vehicle('foot', 'vehicleFoot', Icons.directions_walk, 5),
-  Vehicle('bike', 'vehicleBike', Icons.pedal_bike, 15),
-  Vehicle('ebike', 'vehicleEbike', Icons.electric_bike, 20),
   Vehicle('scooter', 'vehicleScooter', Icons.electric_scooter, 25),
   Vehicle('car', 'vehicleCar', Icons.directions_car, 30),
 ];

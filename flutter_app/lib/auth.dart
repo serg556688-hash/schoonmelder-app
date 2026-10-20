@@ -231,7 +231,7 @@ class _AuthScreenState extends State<AuthScreen> {
               'role': _role,
               'name': '',
               'phone': '',
-              'vehicle': 'foot',
+              'vehicle': 'scooter',
               'withdrawn_cents': 0,
               'created_at': nowMs(),
             });
@@ -546,7 +546,7 @@ class _RoleSetupScreenState extends State<RoleSetupScreen> {
       'role': _role,
       'name': '',
       'phone': '',
-      'vehicle': 'foot',
+      'vehicle': 'scooter',
       'withdrawn_cents': 0,
       'created_at': nowMs(),
     };

@@ -1846,7 +1846,7 @@ class _ProfileViewState extends State<ProfileView> {
     final int count = reporter
         ? widget.reports.length
         : widget.reports.where((Report r) => r.status != Status.fresh).length;
-    String vehicleLabel = tr('vehicleFoot');
+    String vehicleLabel = tr('vehicleScooter');
     for (final Vehicle v in vehicles) {
       if (v.id == widget.profile.vehicle) vehicleLabel = tr(v.labelKey);
     }

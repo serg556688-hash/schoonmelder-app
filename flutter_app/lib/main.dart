@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth.dart';
 import 'data.dart';
-import 'home.dart';
+import 'home_1.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

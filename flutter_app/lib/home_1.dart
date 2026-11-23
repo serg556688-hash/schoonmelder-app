@@ -93,8 +93,8 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   int get _balanceCents {
-    final int b = _earnedCents - widget.profile.withdrawnCents;
-    return b < 0 ? 0 : b;
+    // Clovers are not withdrawn (yet): everything collected stays.
+    return _earnedCents;
   }
 
   void _openWithdraw() {
@@ -171,8 +171,8 @@ class _HomeShellState extends State<HomeShell> {
       _NavItem('history', tr('navHistory'), Icon3DKind.notebook),
       _NavItem(
         'money',
-        _isReporter ? tr('navBonus') : tr('navEarnings'),
-        Icon3DKind.wallet,
+        cl('clTab'),
+        Icon3DKind.clover,
       ),
       _NavItem('chat', tr('navChat'), Icon3DKind.chat),
       _NavItem('profile', tr('navProfile'), Icon3DKind.person),
@@ -334,12 +334,12 @@ class BalanceCard extends StatelessWidget {
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: <Color>[Color(0xFFF7A65A), Color(0xFFEF8423), Color(0xFFE0680A)],
+            colors: <Color>[Color(0xFF7CD77F), Color(0xFF34A853), Color(0xFF1E7B34)],
           ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: const <BoxShadow>[
-            BoxShadow(color: C.btnShadow, offset: Offset(0, 5)),
-            BoxShadow(color: Color(0x4DBE5B12), offset: Offset(0, 14), blurRadius: 28),
+            BoxShadow(color: Color(0xFF17602A), offset: Offset(0, 5)),
+            BoxShadow(color: Color(0x4D1E7B34), offset: Offset(0, 14), blurRadius: 28),
           ],
         ),
         child: Row(
@@ -358,8 +358,8 @@ class BalanceCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    formatEuro(cents),
-                    style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.w700),
+                    '$cents',
+                    style: const TextStyle(fontSize: 30, color: Colors.white, fontWeight: FontWeight.w800),
                   ),
                 ],
               ),
@@ -373,7 +373,7 @@ class BalanceCard extends StatelessWidget {
                 color: const Color(0x33FFFFFF),
                 border: Border.all(color: const Color(0x55FFFFFF)),
               ),
-              child: const Icon3D(Icon3DKind.wallet, size: 50),
+              child: const FloatingClover(size: 50),
             ),
           ],
         ),
@@ -739,7 +739,7 @@ class _ReporterMainState extends State<ReporterMain> {
       children: <Widget>[
         Notices(reports: widget.reports, setTab: widget.setTab),
         BalanceCard(
-          label: tr('balanceBonusLabel'),
+          label: cl('clBalance'),
           cents: widget.balanceCents,
           onTap: () => widget.setTab('money'),
         ),
@@ -1091,7 +1091,7 @@ class _ExecutorMainState extends State<ExecutorMain> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         BalanceCard(
-          label: tr('balanceIncomeLabel'),
+          label: cl('clBalance'),
           cents: widget.balanceCents,
           onTap: () => widget.setTab('money'),
         ),
@@ -1371,7 +1371,7 @@ class EarningsView extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: <Color>[Color(0xFFF7A65A), Color(0xFFEF8423), Color(0xFFE0680A)],
+              colors: <Color>[Color(0xFF7CD77F), Color(0xFF34A853), Color(0xFF1E7B34)],
             ),
             borderRadius: BorderRadius.circular(18),
           ),
@@ -1379,19 +1379,25 @@ class EarningsView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               Text(
-                reporter ? tr('balanceBonusLabel2') : tr('balanceIncomeLabel2'),
+                cl('clBalance'),
                 style: const TextStyle(color: Color(0xFFFFF1E3), fontSize: 13, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
-              Text(
-                formatEuro(balanceCents),
-                style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w700),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      '$balanceCents',
+                      style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  const FloatingClover(size: 76),
+                ],
               ),
-              const SizedBox(height: 12),
-              SecondaryButton(
-                label: tr('withdrawBtn'),
-                icon: Icons.download_outlined,
-                onTap: balanceCents == 0 ? null : onWithdraw,
+              const SizedBox(height: 8),
+              Text(
+                cl('clSoon'),
+                style: const TextStyle(color: Color(0xFFEFFFF0), fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -1401,14 +1407,14 @@ class EarningsView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _statRow(tr('totalEarnedLabel'), formatEuro(earnedCents)),
+              _statRow(cl('clTotal'), '$earnedCents 🍀'),
               _gap(10),
               _statRow(reporter ? tr('sentPhotosLabel') : tr('doneJobsLabel'), '$count'),
               _gap(10),
               Text(
                 reporter
-                    ? tr('explainReporter').replaceAll('{n}', '$reporterCentReward')
-                    : tr('explainExecutor').replaceAll('{n}', formatEuro(executorCentReward)),
+                    ? cl('clExplainRep').replaceAll('{n}', '$reporterCentReward')
+                    : cl('clExplainExec').replaceAll('{n}', '$executorCentReward'),
                 style: metaStyle,
               ),
             ],
@@ -1883,8 +1889,8 @@ class _ProfileViewState extends State<ProfileView> {
         _gap(),
         SmCard(child: _statRow(reporter ? tr('statSentMessages') : tr('statDoneJobs'), '$count')),
         _listButton(
-          reporter ? tr('myBonusesLabel') : tr('myIncomeLabel'),
-          Icon3DKind.wallet,
+          cl('clMine'),
+          Icon3DKind.clover,
           () => widget.setTab('money'),
         ),
         _listButton(tr('supportLabel'), Icon3DKind.chat, () => widget.setTab('chat')),

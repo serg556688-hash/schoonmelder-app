@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 
 import 'auth.dart';
 import 'data.dart';
+import 'fancy.dart';
 import 'widgets.dart';
 
 typedef PatchReport = Future<void> Function(String id, Map<String, dynamic> dbPatch);
@@ -132,7 +133,9 @@ class _HomeShellState extends State<HomeShell> {
           onWithdraw: _openWithdraw,
         );
       case 'chat':
-        return ChatView(role: widget.profile.role, reports: mine, myId: widget.userId);
+        final Widget customers = ChatView(role: widget.profile.role, reports: mine, myId: widget.userId);
+        if (_isReporter) return customers;
+        return ExecutorChats(customers: customers, myId: widget.userId, myName: widget.profile.name);
       case 'profile':
         return ProfileView(
           profile: widget.profile,
@@ -165,15 +168,15 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final List<_NavItem> items = <_NavItem>[
-      _NavItem('main', _isReporter ? tr('navMessages') : tr('navJobs'), Icons.home_outlined),
-      _NavItem('history', tr('navHistory'), Icons.assignment_outlined),
+      _NavItem('main', _isReporter ? tr('navMessages') : tr('navJobs'), Icon3DKind.house),
+      _NavItem('history', tr('navHistory'), Icon3DKind.notebook),
       _NavItem(
         'money',
         _isReporter ? tr('navBonus') : tr('navEarnings'),
-        Icons.account_balance_wallet_outlined,
+        Icon3DKind.wallet,
       ),
-      _NavItem('chat', tr('navChat'), Icons.chat_bubble_outline),
-      _NavItem('profile', tr('navProfile'), Icons.person_outline),
+      _NavItem('chat', tr('navChat'), Icon3DKind.chat),
+      _NavItem('profile', tr('navProfile'), Icon3DKind.person),
     ];
     final int index = items.indexWhere((_NavItem i) => i.id == _tab);
     final bool scrolls = _tab != 'chat';
@@ -210,13 +213,9 @@ class _HomeShellState extends State<HomeShell> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
-                            Icon(
-                              _isReporter
-                                  ? Icons.photo_camera_outlined
-                                  : Icons.cleaning_services_outlined,
-                              size: 16,
-                              color: C.accentDark,
-                            ),
+                            _isReporter
+                                ? const Icon3D(Icon3DKind.camera, size: 22)
+                                : const SweepingBroom(size: 24),
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
@@ -293,7 +292,19 @@ class _HomeShellState extends State<HomeShell> {
         selectedFontSize: 11,
         unselectedFontSize: 11,
         items: items
-            .map((_NavItem i) => BottomNavigationBarItem(icon: Icon(i.icon), label: i.label))
+            .map(
+              (_NavItem i) => BottomNavigationBarItem(
+                icon: Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Icon3D(i.icon, size: 26, dim: true),
+                ),
+                activeIcon: Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Icon3D(i.icon, size: 30),
+                ),
+                label: i.label,
+              ),
+            )
             .toList(),
       ),
     );
@@ -304,7 +315,7 @@ class _NavItem {
   const _NavItem(this.id, this.label, this.icon);
   final String id;
   final String label;
-  final IconData icon;
+  final Icon3DKind icon;
 }
 
 class BalanceCard extends StatelessWidget {
@@ -354,7 +365,17 @@ class BalanceCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.account_balance_wallet_outlined, color: Colors.white, size: 26),
+            Container(
+              width: 62,
+              height: 62,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0x33FFFFFF),
+                border: Border.all(color: const Color(0x55FFFFFF)),
+              ),
+              child: const Icon3D(Icon3DKind.wallet, size: 50),
+            ),
           ],
         ),
       ),
@@ -1814,13 +1835,42 @@ class _ProfileViewState extends State<ProfileView> {
           child: Column(
             children: <Widget>[
               Container(
-                width: 58,
-                height: 58,
+                width: 84,
+                height: 84,
                 alignment: Alignment.center,
-                decoration: const BoxDecoration(color: C.accentSoft, shape: BoxShape.circle),
-                child: Text(
-                  initial,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: C.accentDark),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    center: Alignment(-0.3, -0.4),
+                    colors: <Color>[Color(0xFFFFF4EA), C.accentSoft],
+                  ),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(color: Color(0x33E85A0C), blurRadius: 14, offset: Offset(0, 6)),
+                  ],
+                ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: <Widget>[
+                    const Icon3D(Icon3DKind.person, size: 64),
+                    Positioned(
+                      right: -6,
+                      bottom: -2,
+                      child: Container(
+                        width: 26,
+                        height: 26,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: C.accent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Text(
+                          initial,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 10),

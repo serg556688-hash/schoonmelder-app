@@ -513,14 +513,42 @@ class GeoSampler {
     }
   }
 
+  final List<GeoFix> _recent = <GeoFix>[];
+
   void _take(Position p) {
     final GeoFix fix = GeoFix.of(p);
+    // Keep the last few seconds of measurements.
+    _recent.add(fix);
+    _recent.removeWhere((GeoFix f) => fix.atMs - f.atMs > 8000);
+    final GeoFix next = _average();
     final GeoFix? old = best;
-    // A newer fix wins when it is at least as precise, or when the old one is stale.
-    if (old == null || fix.accuracy <= old.accuracy || fix.atMs - old.atMs > 10000) {
-      best = fix;
+    // A newer result wins when it is at least as precise, or when the old one is stale.
+    if (old == null || next.accuracy <= old.accuracy || next.atMs - old.atMs > 10000) {
+      best = next;
       onChange?.call();
     }
+  }
+
+  /// Averages the most precise recent measurements (weighted by precision),
+  /// which smooths out the GPS jumping a few metres back and forth.
+  GeoFix _average() {
+    double minAcc = double.infinity;
+    for (final GeoFix f in _recent) {
+      if (f.accuracy < minAcc) minAcc = f.accuracy;
+    }
+    final double limit = math.max(minAcc * 1.5, minAcc + 3);
+    double sw = 0, lat = 0, lng = 0;
+    int latest = 0;
+    for (final GeoFix f in _recent) {
+      if (f.accuracy > limit) continue;
+      final double w = 1 / (f.accuracy * f.accuracy);
+      sw += w;
+      lat += f.at.latitude * w;
+      lng += f.at.longitude * w;
+      if (f.atMs > latest) latest = f.atMs;
+    }
+    final double acc = math.max(minAcc * 0.8, 1 / math.sqrt(sw));
+    return GeoFix(LatLng(lat / sw, lng / sw), acc, latest);
   }
 
   /// Waits until the position is precise enough, at most [maxWait].
@@ -586,12 +614,13 @@ class Geo {
       return AndroidSettings(
         accuracy: LocationAccuracy.best,
         distanceFilter: 0,
-        intervalDuration: const Duration(seconds: 1),
+        intervalDuration: const Duration(milliseconds: 500),
       );
     }
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return AppleSettings(
-        accuracy: LocationAccuracy.best,
+        accuracy: LocationAccuracy.bestForNavigation,
+        activityType: ActivityType.fitness,
         distanceFilter: 0,
         pauseLocationUpdatesAutomatically: false,
         allowBackgroundLocationUpdates: false,

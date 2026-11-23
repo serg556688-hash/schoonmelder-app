@@ -20,8 +20,9 @@ const String webAppUrl = 'https://schoonmelder-app.vercel.app';
 
 SupabaseClient get db => Supabase.instance.client;
 
-const int reporterCentReward = 5;
-const int executorCentReward = 50;
+/// Clovers (🍀) earned per photo (reporter) and per finished job (cleaner).
+const int reporterCentReward = 1;
+const int executorCentReward = 2;
 /// The "after" photo is only flagged (never blocked) when it is further away than this.
 const int geoVerifyThresholdM = 50;
 

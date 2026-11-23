@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'auth.dart';
+import 'avatar.dart';
 import 'data.dart';
 import 'fancy.dart';
 import 'widgets.dart';
@@ -1839,44 +1840,9 @@ class _ProfileViewState extends State<ProfileView> {
         SmCard(
           child: Column(
             children: <Widget>[
-              Container(
-                width: 84,
-                height: 84,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    center: Alignment(-0.3, -0.4),
-                    colors: <Color>[Color(0xFFFFF4EA), C.accentSoft],
-                  ),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(color: Color(0x33E85A0C), blurRadius: 14, offset: Offset(0, 6)),
-                  ],
-                ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: <Widget>[
-                    const Icon3D(Icon3DKind.person, size: 64),
-                    Positioned(
-                      right: -6,
-                      bottom: -2,
-                      child: Container(
-                        width: 26,
-                        height: 26,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: C.accent,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Text(
-                          initial,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              ProfileAvatar(
+                userId: (widget.profile.row['id'] ?? '').toString(),
+                initialPhoto: widget.profile.row['avatar']?.toString(),
               ),
               const SizedBox(height: 10),
               if (_editing) ...<Widget>[

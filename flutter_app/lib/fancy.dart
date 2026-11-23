@@ -51,7 +51,7 @@ String fx(String key) => _fx[I18n.lang.value]?[key] ?? _fx['en']?[key] ?? key;
 
 // ---------------------------------------------------------------- 3D icons
 
-enum Icon3DKind { wallet, notebook, chat, person, house, camera, broom }
+enum Icon3DKind { wallet, notebook, chat, person, house, camera, broom, clover }
 
 /// Colourful, shaded icons that look like small 3D objects.
 class Icon3D extends StatelessWidget {
@@ -65,7 +65,9 @@ class Icon3D extends StatelessWidget {
   Widget build(BuildContext context) {
     final Widget icon = kind == Icon3DKind.broom
         ? SweepingBroom(size: size, animate: !dim)
-        : CustomPaint(size: Size.square(size), painter: _Icon3DPainter(kind));
+        : kind == Icon3DKind.clover
+            ? FloatingClover(size: size, animate: !dim)
+            : CustomPaint(size: Size.square(size), painter: _Icon3DPainter(kind));
     if (!dim) return icon;
     return Opacity(opacity: 0.5, child: icon);
   }
@@ -121,6 +123,7 @@ class _Icon3DPainter extends CustomPainter {
       case Icon3DKind.camera:
         _camera(canvas, s);
       case Icon3DKind.broom:
+      case Icon3DKind.clover:
         break;
     }
   }
@@ -786,4 +789,212 @@ class _ExecutorChatsState extends State<ExecutorChats> {
       ],
     );
   }
+}
+
+// ---------------------------------------------------------------- clover
+
+const Map<String, Map<String, String>> _cl = <String, Map<String, String>>{
+  'nl': <String, String>{
+    'clTab': 'Klavers',
+    'clMine': 'Mijn klavers',
+    'clBalance': 'Verzamelde klavers',
+    'clTotal': 'Totaal verzameld',
+    'clSoon': 'Binnenkort kun je klavers inwisselen voor een bonus.',
+    'clExplainExec': 'Voor elke uitgevoerde klus krijg je {n} klavers.',
+    'clExplainRep': 'Voor elke foto van zwerfvuil krijg je {n} klaver.',
+  },
+  'en': <String, String>{
+    'clTab': 'Clovers',
+    'clMine': 'My clovers',
+    'clBalance': 'Clovers collected',
+    'clTotal': 'Total collected',
+    'clSoon': 'Soon you can exchange clovers for a bonus.',
+    'clExplainExec': 'For every finished job you get {n} clovers.',
+    'clExplainRep': 'For every photo of litter you get {n} clover.',
+  },
+  'ru': <String, String>{
+    'clTab': 'Клевер',
+    'clMine': 'Мой клевер',
+    'clBalance': 'Собрано клевера',
+    'clTotal': 'Всего собрано',
+    'clSoon': 'Скоро клевер можно будет обменять на премию.',
+    'clExplainExec': 'За каждый выполненный заказ вы получаете {n} клевера.',
+    'clExplainRep': 'За каждое фото мусора вы получаете {n} клевер.',
+  },
+  'ar': <String, String>{
+    'clTab': 'البرسيم',
+    'clMine': 'برسيمي',
+    'clBalance': 'البرسيم المجموع',
+    'clTotal': 'المجموع الكلي',
+    'clSoon': 'قريباً يمكنك استبدال البرسيم بمكافأة.',
+    'clExplainExec': 'عن كل مهمة منجزة تحصل على {n} برسيمة.',
+    'clExplainRep': 'عن كل صورة للقمامة تحصل على {n} برسيمة.',
+  },
+};
+
+String cl(String key) => _cl[I18n.lang.value]?[key] ?? _cl['en']?[key] ?? key;
+
+/// A four-leaf clover that floats softly, as if a light wind moves it.
+class FloatingClover extends StatefulWidget {
+  const FloatingClover({super.key, this.size = 28, this.animate = true});
+
+  final double size;
+  final bool animate;
+
+  @override
+  State<FloatingClover> createState() => _FloatingCloverState();
+}
+
+class _FloatingCloverState extends State<FloatingClover> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3600),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.animate) _c.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant FloatingClover oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animate && !_c.isAnimating) _c.repeat();
+    if (!widget.animate && _c.isAnimating) _c.stop();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (BuildContext context, Widget? _) => CustomPaint(
+          size: Size.square(widget.size),
+          painter: _CloverPainter(_c.value),
+        ),
+      ),
+    );
+  }
+}
+
+class _CloverPainter extends CustomPainter {
+  _CloverPainter(this.t);
+
+  final double t;
+
+  Path _leaf(double l) {
+    return Path()
+      ..moveTo(0, 0)
+      ..cubicTo(-0.55 * l, -0.25 * l, -0.78 * l, -0.95 * l, -0.26 * l, -1.0 * l)
+      ..cubicTo(-0.06 * l, -1.02 * l, 0, -0.86 * l, 0, -0.74 * l)
+      ..cubicTo(0, -0.86 * l, 0.06 * l, -1.02 * l, 0.26 * l, -1.0 * l)
+      ..cubicTo(0.78 * l, -0.95 * l, 0.55 * l, -0.25 * l, 0, 0)
+      ..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double s = size.shortestSide;
+    final double a = t * 2 * math.pi;
+    // Soft floating: drifts, rises a little and tilts like in a breeze.
+    final double sway = math.sin(a) * 0.16 + math.sin(a * 2 + 1) * 0.05;
+    final double bob = math.sin(a + 0.8) * s * 0.035;
+    final double flutter = 1 - 0.1 * (0.5 + 0.5 * math.sin(a * 2));
+    final Offset c = Offset(s * 0.5, s * 0.42 + bob);
+
+    // Shadow on the ground, smaller when the leaf floats higher.
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(s * 0.5, s * 0.95), width: s * (0.5 - bob / s), height: s * 0.07),
+      Paint()
+        ..color = const Color(0x2A000000)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.03),
+    );
+
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(sway);
+    // Squeezing one side makes the leaves look turned in 3D by the wind.
+    canvas.scale(flutter, 1);
+
+    // Stem.
+    final Path stem = Path()
+      ..moveTo(0, 0)
+      ..quadraticBezierTo(s * 0.06, s * 0.22, s * 0.16, s * 0.42);
+    canvas.drawPath(
+      stem,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = s * 0.055
+        ..color = const Color(0xFF2E7D32),
+    );
+
+    final double l = s * 0.36;
+    final Rect box = Rect.fromCircle(center: Offset.zero, radius: l);
+    for (int i = 0; i < 4; i++) {
+      canvas.save();
+      canvas.rotate(math.pi / 4 + i * math.pi / 2);
+      final Path leaf = _leaf(l);
+      // Each leaf is lit a bit differently, which gives depth.
+      final double light = 0.5 + 0.5 * math.cos(math.pi / 4 + i * math.pi / 2 + 2.4 + sway);
+      canvas.drawPath(
+        leaf,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: <Color>[
+              const Color(0xFF1B7A2E),
+              Color.lerp(const Color(0xFF3FAE4F), const Color(0xFF8BE07A), light)!,
+              Color.lerp(const Color(0xFF2E9E43), const Color(0xFFB8F5A0), light)!,
+            ],
+          ).createShader(Rect.fromLTWH(-l, -l, 2 * l, l)),
+      );
+      // Middle vein and a white heart-shaped mark, like a real clover.
+      canvas.drawLine(
+        Offset.zero,
+        Offset(0, -0.72 * l),
+        Paint()
+          ..color = const Color(0x5532A852)
+          ..strokeWidth = s * 0.012,
+      );
+      canvas.drawPath(
+        Path()
+          ..addOval(Rect.fromCenter(center: Offset(0, -0.5 * l), width: 0.42 * l, height: 0.2 * l)),
+        Paint()..color = Color.fromRGBO(255, 255, 255, 0.18 + 0.2 * light),
+      );
+      canvas.drawPath(
+        leaf,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = s * 0.012
+          ..color = const Color(0x66145A22),
+      );
+      canvas.restore();
+    }
+    // Shine from the sun.
+    canvas.drawCircle(
+      Offset(-l * 0.35, -l * 0.35),
+      l * 0.5,
+      Paint()
+        ..shader = RadialGradient(
+          colors: const <Color>[Color(0x55FFFFFF), Color(0x00FFFFFF)],
+        ).createShader(Rect.fromCircle(center: Offset(-l * 0.35, -l * 0.35), radius: l * 0.5)),
+    );
+    // Centre.
+    canvas.drawCircle(Offset.zero, s * 0.035, Paint()..color = const Color(0xFF1E6B2C));
+    canvas.restore();
+    // Keep the painter honest about its area.
+    if (box.isEmpty) return;
+  }
+
+  @override
+  bool shouldRepaint(covariant _CloverPainter oldDelegate) => oldDelegate.t != t;
 }

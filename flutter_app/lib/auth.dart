@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data.dart';
-import 'globe.dart';
+import 'globe_1.dart';
 import 'widgets.dart';
 
 // ---------------------------------------------------------------- language button

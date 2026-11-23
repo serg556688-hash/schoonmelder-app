@@ -1150,8 +1150,8 @@ class ReportCard extends StatelessWidget {
               const Spacer(),
               if (priceCents != null) ...<Widget>[
                 Text(
-                  formatEuro(priceCents!),
-                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.accentDark),
+                  '+${priceCents!} 🍀',
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF2E7D32)),
                 ),
                 const SizedBox(width: 8),
               ],

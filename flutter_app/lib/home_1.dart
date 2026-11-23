@@ -974,15 +974,26 @@ class _ExecutorMainState extends State<ExecutorMain> {
   Future<void> _finish(Report r) async {
     if (_busyId.isNotEmpty) return;
     String? photo;
+    // Warm the GPS up while the camera is open, so the place of the "after"
+    // photo is measured precisely instead of taking a rough first answer.
+    final GeoSampler gps = GeoSampler();
+    unawaited(gps.start());
     try {
       photo = await takePhoto();
     } catch (_) {
+      gps.stop();
       if (mounted) await showInfo(context, tr('photoErrorText'));
       return;
     }
-    if (photo == null || !mounted) return;
+    if (photo == null || !mounted) {
+      gps.stop();
+      return;
+    }
     setState(() => _busyId = r.id);
-    final LatLng? pos = await Geo.getLocation();
+    GeoFix? fix = gps.running ? await gps.settle(maxWait: const Duration(seconds: 15)) : null;
+    gps.stop();
+    fix ??= await Geo.getFix(maxWait: const Duration(seconds: 10));
+    final LatLng? pos = fix?.at;
     if (!mounted) return;
     if (pos == null) {
       setState(() => _busyId = '');
@@ -991,10 +1002,13 @@ class _ExecutorMainState extends State<ExecutorMain> {
     }
     // The "after" photo is never refused because of GPS: a spot that does not
     // match is only flagged on the report, so the reporter can check it.
+    // Both measurements have an error margin; only the distance that is left
+    // after taking both margins off counts.
     final LatLng? target = r.coords;
     if (target != null) {
       final int meters = ((haversineKm(target, pos) ?? 0) * 1000).round();
-      if (meters > geoVerifyThresholdM) smEvent(r.id, 'far:$meters');
+      final double margin = fix!.accuracy + (r.accuracyM ?? geoGoodAccuracyM);
+      if (meters - margin > geoVerifyThresholdM) smEvent(r.id, 'far:$meters');
     }
     await widget.patchReport(r.id, <String, dynamic>{
       'status': Status.awaiting,

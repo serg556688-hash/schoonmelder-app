@@ -133,9 +133,7 @@ class _HomeShellState extends State<HomeShell> {
           onWithdraw: _openWithdraw,
         );
       case 'chat':
-        final Widget customers = ChatView(role: widget.profile.role, reports: mine, myId: widget.userId);
-        if (_isReporter) return customers;
-        return ExecutorChats(customers: customers, myId: widget.userId, myName: widget.profile.name);
+        return ChatView(role: widget.profile.role, reports: mine, myId: widget.userId);
       case 'profile':
         return ProfileView(
           profile: widget.profile,
@@ -1801,7 +1799,7 @@ class _ProfileViewState extends State<ProfileView> {
     super.dispose();
   }
 
-  Widget _listButton(String label, IconData icon, VoidCallback onTap) {
+  Widget _listButton(String label, Icon3DKind icon, VoidCallback onTap) {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: InkWell(
@@ -1810,8 +1808,15 @@ class _ProfileViewState extends State<ProfileView> {
         child: SmCard(
           child: Row(
             children: <Widget>[
-              Expanded(child: Text(label, style: const TextStyle(fontSize: 14.5, color: C.ink))),
-              Icon(icon, size: 18, color: C.muted),
+              Icon3D(icon, size: 36),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.ink),
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 22, color: C.muted),
             ],
           ),
         ),
@@ -1913,10 +1918,10 @@ class _ProfileViewState extends State<ProfileView> {
         SmCard(child: _statRow(reporter ? tr('statSentMessages') : tr('statDoneJobs'), '$count')),
         _listButton(
           reporter ? tr('myBonusesLabel') : tr('myIncomeLabel'),
-          Icons.account_balance_wallet_outlined,
+          Icon3DKind.wallet,
           () => widget.setTab('money'),
         ),
-        _listButton(tr('supportLabel'), Icons.chat_bubble_outline, () => widget.setTab('chat')),
+        _listButton(tr('supportLabel'), Icon3DKind.chat, () => widget.setTab('chat')),
         _gap(16),
         SecondaryButton(label: tr('signOutAccountBtn'), onTap: () => widget.signOut()),
       ],

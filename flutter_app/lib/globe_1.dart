@@ -210,7 +210,8 @@ class _EarthPainter extends CustomPainter {
         pos[k * 2 + 1] = c.dy - y * r;
         final double lon = center + dl;
         tex[k * 2] = (lon / (2 * math.pi) + 0.5) * iw;
-        tex[k * 2 + 1] = (0.5 - lat / math.pi) * ih;
+        // The picture is flipped on the phone's renderer, so north is counted from the bottom.
+        tex[k * 2 + 1] = (0.5 + lat / math.pi) * ih;
       }
     }
 

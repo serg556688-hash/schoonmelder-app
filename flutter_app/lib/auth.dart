@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'data.dart';
+import 'faceid.dart';
 import 'globe_1.dart';
 import 'widgets.dart';
 
@@ -477,7 +478,9 @@ class WelcomeBackScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AuthShell(
+    return FaceIdUnlock(
+      onUnlocked: onContinue,
+      builder: (BuildContext context, Widget? faceId) => AuthShell(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -487,6 +490,10 @@ class WelcomeBackScreen extends StatelessWidget {
           const SizedBox(height: 10),
           _filled('\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022', Icons.lock_outline),
           const SizedBox(height: 16),
+          if (faceId != null) ...<Widget>[
+            faceId,
+            const SizedBox(height: 10),
+          ],
           PrimaryButton(label: tr('signInBtn'), onTap: onContinue),
           Align(
             alignment: Alignment.center,
@@ -499,6 +506,7 @@ class WelcomeBackScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

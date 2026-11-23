@@ -14,6 +14,7 @@ info["NSLocationWhenInUseUsageDescription"] = (
 info["NSCameraUsageDescription"] = "Schoonmelder gebruikt de camera om een foto van het afval te maken."
 info["NSPhotoLibraryUsageDescription"] = "Schoonmelder heeft toegang nodig om een foto toe te voegen."
 info["NSMicrophoneUsageDescription"] = "De microfoon wordt niet gebruikt voor opnames."
+info["NSFaceIDUsageDescription"] = "Met Face ID log je snel en veilig in bij Schoonmelder."
 info["ITSAppUsesNonExemptEncryption"] = False
 
 with open(path, "wb") as f:

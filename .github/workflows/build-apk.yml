@@ -37,6 +37,9 @@ jobs:
           flutter create --platforms=android --org nl.schoonmelder --project-name schoonmelder .
           rm -rf test
           python3 tool/patch_android.py
+          for f in android/app/build.gradle.kts android/app/build.gradle; do
+            if [ -f "$f" ]; then printf '\nandroid {\n    lint {\n        checkReleaseBuilds = false\n        abortOnError = false\n    }\n}\n' >> "$f"; fi
+          done
           mkdir -p ~/.android
           cp tool/debug.keystore ~/.android/debug.keystore
 

@@ -1,6 +1,16 @@
 {
   "framework": null,
   "installCommand": "echo skip-install",
-  "buildCommand": "mkdir -p public && cp index.html public/index.html",
-  "outputDirectory": "public"
+  "buildCommand": "mkdir -p public && cp index.html public/index.html && cp admin.html public/admin.html",
+  "outputDirectory": "public",
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/admin",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
+  ]
 }

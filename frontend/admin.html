@@ -88,7 +88,21 @@
     <input id="pw" name="password" type="password" autocomplete="current-password" required>
     <button class="btn wide" type="submit" id="loginBtn">Войти</button>
     <div class="err" id="loginErr"></div>
+    <button type="button" class="btn ghost wide" id="forgotBtn" style="margin-top:4px">Забыли пароль?</button>
     <div class="hint">На iPhone Safari предложит сохранить пароль. В следующий раз нажмите на поле почты и войдите по Face ID.</div>
+  </form>
+</section>
+
+<section id="reset" class="hidden" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;background:linear-gradient(160deg,#FFB574,#FF6A1A 55%,#E0500A)">
+  <form class="lcard" id="resetForm">
+    <div class="brand"><div class="logo">S&amp;S</div><div><h1>Новый пароль</h1><div class="muted">Schoonmelder S&amp;S Company</div></div></div>
+    <p class="sub">Придумайте новый пароль (минимум 8 символов). Он будет и для приложения.</p>
+    <label for="np1">Новый пароль</label>
+    <input id="np1" type="password" autocomplete="new-password" minlength="8" required>
+    <label for="np2">Ещё раз</label>
+    <input id="np2" type="password" autocomplete="new-password" minlength="8" required>
+    <button class="btn wide" type="submit" id="resetBtn">Сохранить пароль</button>
+    <div class="err" id="resetErr"></div>
   </form>
 </section>
 
@@ -201,7 +215,7 @@ const dist = (a,b,c,d) => { if([a,b,c,d].some(v=>v==null)) return null; const R=
 
 let me=null, reports=[], profiles={}, events={}, map=null, idleTimer=null;
 
-function show(id){ ['login','app','denied'].forEach(x => $('#'+x).classList.toggle('hidden', x!==id)); }
+function show(id){ ['login','reset','app','denied'].forEach(x => $('#'+x).classList.toggle('hidden', x!==id)); }
 
 // ---- auto logout after inactivity
 function resetIdle(){ clearTimeout(idleTimer); idleTimer = setTimeout(()=>{ if(me) logout(); }, IDLE_MIN*60*1000); }
@@ -214,7 +228,30 @@ $('#loginForm').onsubmit = async e => {
   e.preventDefault(); $('#loginErr').textContent=''; $('#loginBtn').disabled = true;
   const {error} = await db.auth.signInWithPassword({email: $('#email').value.trim(), password: $('#pw').value});
   $('#loginBtn').disabled = false;
-  if(error){ $('#loginErr').textContent = 'Неверная почта или пароль.'; return; }
+  if(error){ $('#loginErr').textContent = /confirm/i.test(error.message) ? 'Почта ещё не подтверждена. Откройте письмо от Schoonmelder.' : 'Неверная почта или пароль. Нажмите «Забыли пароль?», чтобы задать новый.'; return; }
+  start();
+};
+
+$('#forgotBtn').onclick = async () => {
+  const email = $('#email').value.trim();
+  if(!email){ $('#loginErr').textContent = 'Сначала впишите почту в поле выше.'; return; }
+  $('#forgotBtn').disabled = true;
+  const {error} = await db.auth.resetPasswordForEmail(email, {redirectTo: location.origin + '/admin'});
+  $('#forgotBtn').disabled = false;
+  $('#loginErr').style.color = error ? '' : 'var(--ok)';
+  $('#loginErr').textContent = error ? 'Не получилось отправить письмо. Попробуйте через минуту.' : 'Письмо отправлено на ' + email + '. Откройте его на этом телефоне и нажмите на ссылку.';
+};
+
+$('#resetForm').onsubmit = async e => {
+  e.preventDefault(); $('#resetErr').textContent = '';
+  const a = $('#np1').value, b = $('#np2').value;
+  if(a.length < 8){ $('#resetErr').textContent = 'Минимум 8 символов.'; return; }
+  if(a !== b){ $('#resetErr').textContent = 'Пароли не совпадают.'; return; }
+  $('#resetBtn').disabled = true;
+  const {error} = await db.auth.updateUser({password: a});
+  $('#resetBtn').disabled = false;
+  if(error){ $('#resetErr').textContent = 'Ссылка устарела. Запросите письмо ещё раз.'; return; }
+  history.replaceState(null, '', location.pathname);
   start();
 };
 
@@ -416,7 +453,12 @@ document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
 
 // refresh every minute
 setInterval(() => { if(me && document.visibilityState==='visible') load(); }, 60000);
-connect().then(start).catch(() => { $('#loginErr').textContent = 'Нет связи с сервером.'; show('login'); });
+connect().then(() => {
+  const recovery = /type=recovery/.test(location.hash);
+  db.auth.onAuthStateChange(ev => { if(ev === 'PASSWORD_RECOVERY') show('reset'); });
+  if(recovery){ show('reset'); return; }
+  start();
+}).catch(() => { $('#loginErr').textContent = 'Нет связи с сервером.'; show('login'); });
 })();
 </script>
 </body>
